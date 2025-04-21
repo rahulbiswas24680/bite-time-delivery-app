@@ -1,4 +1,3 @@
-
 import { CustomerLocation } from '../utils/types';
 
 // This would normally be stored in a database and updated in real-time
@@ -10,12 +9,24 @@ export const customerLocations: Record<string, CustomerLocation> = {
     address: '123 Main St, New York, NY',
     lastUpdated: '2025-04-21T11:30:00Z',
   },
+  '2': {
+    latitude: 40.713890,
+    longitude: -74.006789,
+    address: '789 Broadway, New York, NY',
+    lastUpdated: '2025-04-21T11:45:00Z',
+  },
   '3': {
     latitude: 40.714541,
     longitude: -74.007779,
     address: '456 Park Ave, New York, NY',
     lastUpdated: '2025-04-21T10:20:00Z',
   },
+  '4': {
+    latitude: 40.715234,
+    longitude: -74.008123,
+    address: '321 Oak St, New York, NY',
+    lastUpdated: '2025-04-21T12:00:00Z',
+  }
 };
 
 // Restaurant location (fixed)
