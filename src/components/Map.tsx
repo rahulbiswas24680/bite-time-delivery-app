@@ -147,14 +147,13 @@ const MapComponent: React.FC<MapProps> = ({ customerId, showRoute = true }) => {
       <div ref={mapContainer} className="absolute inset-0" />
       
       {travelInfo.minutes > 0 && (
-        <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg z-10">
-          <h3 className="font-bold text-food-orange">Estimated Travel</h3>
-          <p className="text-food-darkGray">Time: <span className="font-medium">{travelInfo.minutes} minutes</span></p>
-          <p className="text-food-darkGray">Distance: <span className="font-medium">{(travelInfo.distance / 1000).toFixed(1)} km</span></p>
+        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white p-3 rounded-lg shadow-lg z-10 max-w-[90%] md:max-w-[300px]">
+          <h3 className="font-bold text-food-orange text-sm md:text-base">Estimated Travel</h3>
+          <p className="text-food-darkGray text-sm md:text-base">Time: <span className="font-medium">{travelInfo.minutes} minutes</span></p>
+          <p className="text-food-darkGray text-sm md:text-base">Distance: <span className="font-medium">{(travelInfo.distance / 1000).toFixed(1)} km</span></p>
         </div>
       )}
-    </div>
-  );
+    </div>  );
 };
 
 export default MapComponent;

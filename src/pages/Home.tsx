@@ -33,7 +33,7 @@ const Home: React.FC = () => {
                   </Button>
                   <Button 
                     variant="outline"
-                    className="border-white text-white hover:bg-white/10"
+                    className="border-white text-gray-600"
                     size="lg"
                     onClick={() => navigate('/register')}
                   >
