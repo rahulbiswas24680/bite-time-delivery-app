@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,7 @@ import Register from "./pages/Auth/Register";
 import Menu from "./pages/Customer/Menu";
 import Orders from "./pages/Customer/Orders";
 import CustomerChat from "./pages/Customer/Chat";
+import Checkout from "./pages/Customer/Checkout";
 
 // Owner Pages
 import Dashboard from "./pages/Owner/Dashboard";
@@ -43,6 +45,7 @@ const App = () => (
             <Route path="/customer/orders" element={<Orders />} />
             <Route path="/customer/chat" element={<CustomerChat />} />
             <Route path="/customer/chat/:orderId" element={<CustomerChat />} />
+            <Route path="/customer/checkout" element={<Checkout />} />
             
             {/* Owner Routes */}
             <Route path="/owner/dashboard" element={<Dashboard />} />

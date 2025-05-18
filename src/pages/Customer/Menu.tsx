@@ -1,16 +1,15 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { MenuItem } from '../../utils/types';
 import { menuItems, getMenuCategories } from '../../data/menuItems';
-import { addNewOrder, calculateOrderTotal } from '../../data/orders';
 import Navbar from '../../components/Layout/Navbar';
 import MenuCard from '../../components/Menu/MenuCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { calculateOrderTotal } from '../../data/orders';
 
 interface CartItem {
   menuItem: MenuItem;
@@ -79,35 +78,15 @@ const Menu: React.FC = () => {
     }, 0);
   };
   
-  // Submit order
-  const placeOrder = () => {
+  // Handle proceed to checkout
+  const proceedToCheckout = () => {
     if (!currentUser) {
       navigate('/login');
       return;
     }
     
-    const orderItems = cart.map(item => ({
-      menuItemId: item.menuItem.id,
-      quantity: item.quantity,
-      specialInstructions: item.specialInstructions,
-    }));
-    
-    const total = calculateTotal();
-    
-    // Create a new order
-    const order = addNewOrder({
-      customerId: currentUser.id,
-      items: orderItems,
-      status: 'pending',
-      totalAmount: total,
-    });
-    
-    // Clear cart after order is placed
-    setCart([]);
-    setShowCart(false);
-    
-    // Navigate to order confirmation page
-    navigate(`/customer/orders/${order.id}`);
+    // Navigate to checkout with cart items as state
+    navigate('/customer/checkout', { state: { cartItems: cart } });
   };
   
   // If user is not logged in or not a customer, redirect to login
@@ -233,13 +212,13 @@ const Menu: React.FC = () => {
                       </div>
                     </div>
                     
-                    {/* Place order button */}
+                    {/* Checkout button */}
                     <Button 
                       className="w-full bg-food-orange hover:bg-orange-600 mt-4"
-                      onClick={placeOrder}
+                      onClick={proceedToCheckout}
                       disabled={cart.length === 0}
                     >
-                      Place Order
+                      Checkout
                     </Button>
                   </div>
                 )}
