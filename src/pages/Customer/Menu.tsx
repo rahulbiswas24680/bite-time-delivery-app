@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { MenuItem } from '../../utils/types';
@@ -32,6 +32,14 @@ const Menu: React.FC = () => {
   const filteredItems = activeCategory 
     ? menuItems.filter(item => item.category === activeCategory)
     : menuItems;
+
+  // Load cart on mount
+  useEffect(() => {
+    const storedCart = localStorage.getItem(`cart_${currentUser?.id || 'guest'}`);
+    if (storedCart) {
+      setCart(JSON.parse(storedCart));
+    }
+  }, [currentUser]);
   
   // Add item to cart
   const addToCart = (item: MenuItem) => {
@@ -52,12 +60,16 @@ const Menu: React.FC = () => {
     // Show cart after adding item
     setShowCart(true);
   };
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`cart_${currentUser?.id || 'guest'}`, JSON.stringify(cart));
+  }, [cart, currentUser]);
   
   // Remove item from cart
   const removeFromCart = (itemId: string) => {
     setCart(cart.filter(item => item.menuItem.id !== itemId));
-  };
-  
+  };  
   // Update item quantity in cart
   const updateQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) {
@@ -79,6 +91,18 @@ const Menu: React.FC = () => {
     }, 0);
   };
   
+  // Handle proceed to checkout
+  const proceedToCheckout = () => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+    
+    // Navigate to checkout with cart items as state
+    navigate('/customer/checkout', { state: { cartItems: cart } });
+  };
+
+
   // Submit order
   const placeOrder = () => {
     if (!currentUser) {
@@ -233,13 +257,13 @@ const Menu: React.FC = () => {
                       </div>
                     </div>
                     
-                    {/* Place order button */}
+                    {/* Checkout button */}
                     <Button 
                       className="w-full bg-food-orange hover:bg-orange-600 mt-4"
-                      onClick={placeOrder}
+                      onClick={proceedToCheckout}
                       disabled={cart.length === 0}
                     >
-                      Place Order
+                      Checkout
                     </Button>
                   </div>
                 )}

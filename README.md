@@ -71,3 +71,15 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+
+
+## How to attach dynamic backend using Firebase?
+
+Create a new project in Firebase and copy the config object.
+
+- Install firebase in project 
+```
+npm install firebase
+```
+

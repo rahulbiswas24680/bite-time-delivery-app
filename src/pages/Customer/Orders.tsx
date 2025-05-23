@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getOrdersByCustomerId } from '../../data/orders';
+import { getOrdersByCustomerId } from '../../backend/order';
 import Navbar from '../../components/Layout/Navbar';
 import OrderCard from '../../components/Order/OrderCard';
 import Map from '../../components/Map';
@@ -10,6 +10,8 @@ import Map from '../../components/Map';
 const Orders: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // If user is not logged in or not a customer, redirect to login
   React.useEffect(() => {
@@ -20,17 +22,30 @@ const Orders: React.FC = () => {
     }
   }, [currentUser, navigate]);
   
-  // Get customer's orders
-  const customerOrders = currentUser 
-    ? getOrdersByCustomerId(currentUser.id)
-    : [];
+  // Load orders from Firebase
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (currentUser) {
+        try {
+          const data = await getOrdersByCustomerId(currentUser.id);
+          setOrders(data);
+        } catch (error) {
+          console.error('Failed to fetch orders:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchOrders();
+  }, [currentUser]);
     
   // Separate active and past orders
-  const activeOrders = customerOrders.filter(order => 
+  const activeOrders = orders.filter(order => 
     ['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)
   );
-  
-  const pastOrders = customerOrders.filter(order => 
+
+  const pastOrders = orders.filter(order => 
     ['completed', 'cancelled'].includes(order.status)
   );
   
@@ -41,7 +56,7 @@ const Orders: React.FC = () => {
       <main className="flex-1 container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">My Orders</h1>
         
-        {customerOrders.length === 0 ? (
+        {orders.length === 0 ? (
           <div className="text-center py-12">
             <h2 className="text-2xl font-semibold text-gray-600 mb-4">You haven't placed any orders yet</h2>
             <p className="text-gray-500 mb-6">Hungry? Browse our menu and place your first order!</p>

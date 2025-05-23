@@ -1,13 +1,22 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { loginUser, logoutUser, signupUser } from '../backend/authService';
+import { auth, db } from '../backend/firebase';
 import { User } from '../utils/types';
-import { validateCredentials } from '../data/users';
 
 type AuthContextType = {
   currentUser: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User | null>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  signup: (
+    email: string,
+    password: string,
+    name: string,
+    phone: string,
+    role: 'customer' | 'owner'
+  ) => Promise<User | null>;
   error: string | null;
 };
 
@@ -19,40 +28,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for saved user in local storage
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userData = userDoc.exists() ? userDoc.data() : {};
+
+        setCurrentUser({
+          id: user.uid,
+          email: user.email || '',
+          name: userData.name || user.displayName || '',
+          phone: userData.phone || '',
+          role: userData.role || 'customer',
+          password: ''
+        });
+      } else {
+        setCurrentUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<User | null> => {
+
+  const signup = async (email: string, password: string, name: string, phone: string, role: 'customer' | 'owner'): Promise<User | null> => {
     setError(null);
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const user = validateCredentials(email, password);
-      if (user) {
-        // Save user data without password to localStorage
-        const { password: _, ...userWithoutPassword } = user;
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        setCurrentUser(user);
-        return user;
-      } else {
-        setError('Invalid email or password');
-        return null;
-      }
-    } catch (err) {
-      setError('An error occurred during login');
+      const userCredential = await signupUser(email, password, name, phone, role);
+      const user = userCredential;
+
+      const newUser: User = {
+        id: user.uid,
+        email: user.email || '',
+        name,
+        phone: '',
+        role: 'customer',
+        password
+      };
+
+      setCurrentUser(newUser);
+      return newUser;
+    } catch (err: any) {
+      setError(err.message);
       return null;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('currentUser');
-    setCurrentUser(null);
+  const login = async (email: string, password: string): Promise<User | null> => {
+    setError(null);
+    try {
+      const userCredential = await loginUser(email, password);
+      const user = userCredential.user;
+
+      const loggedInUser: User = {
+        id: user.uid,
+        email: user.email || '',
+        name: user.displayName || '',
+        phone: '',
+        role: 'customer',
+        password
+      };
+      const { password: _, ...userWithoutPassword } = loggedInUser;
+      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      setCurrentUser(loggedInUser);
+      return loggedInUser;
+    } catch (err: any) {
+      setError(err.message);
+      return null;
+    }
+  };
+  const logout = async () => {
+    try {
+      await logoutUser();
+      setCurrentUser(null);
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   const value = {
@@ -60,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     login,
     logout,
+    signup,
     error,
   };
 

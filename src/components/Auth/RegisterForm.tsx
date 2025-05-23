@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { users } from '../../data/users';
+import { useAuth } from '@/contexts/AuthContext';
 
 const RegisterForm: React.FC = () => {
   const [name, setName] = useState('');
@@ -19,6 +20,8 @@ const RegisterForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const { signup } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,22 +43,10 @@ const RegisterForm: React.FC = () => {
         return;
       }
 
-      // In a real app, we'd make an API call to register the user
-      // For this demo, we'll just add to our static users array
-      const newUser = {
-        id: (users.length + 1).toString(),
-        name,
-        email,
-        phone,
-        role,
-        password,
-      };
-      
-      users.push(newUser);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      const user = await signup(email, password, name, phone, role);
+      if (user) {
+        navigate('/login'); // Or redirect wherever needed
+      }
       // After successful registration, redirect to login
       navigate('/login');
     } catch (err) {

@@ -9,7 +9,7 @@ const CustomerChat: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  
+  console.log('OrderCard', orderId);
   // Redirect if not logged in or not a customer
   React.useEffect(() => {
     if (!currentUser) {

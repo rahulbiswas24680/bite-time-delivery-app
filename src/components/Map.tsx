@@ -111,14 +111,34 @@ const MapComponent: React.FC<MapProps> = ({ customerId, showRoute = true }) => {
         markersSource.addFeature(customerFeature);
 
         // Add route if showRoute is true
+        
         if (showRoute) {
-          const routeFeature = new Feature({
-            geometry: new LineString([
-              fromLonLat([customerLocation.longitude, customerLocation.latitude]),
-              fromLonLat([restaurantLocation.longitude, restaurantLocation.latitude]),
-            ]),
-          });
-          routeSource.addFeature(routeFeature);
+          const start = [customerLocation.longitude, customerLocation.latitude];
+          const end = [restaurantLocation.longitude, restaurantLocation.latitude];
+          
+          // Use OSRM service to get the actual route
+          fetch(`https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.routes && data.routes[0]) {
+                const coordinates = data.routes[0].geometry.coordinates;
+                const transformedCoords = coordinates.map((coord: number[]) => fromLonLat(coord));
+                
+                const routeFeature = new Feature({
+                  geometry: new LineString(transformedCoords)
+                });
+                
+                routeSource.addFeature(routeFeature);
+                
+                // Fit view to include the route
+                const extent = routeSource.getExtent();
+                initialMap.getView().fit(extent, {
+                  padding: [50, 50, 50, 50],
+                  maxZoom: 16,
+                });
+              }
+            })
+            .catch(error => console.error('Error fetching route:', error));
         }
 
         // Fit view to include both markers

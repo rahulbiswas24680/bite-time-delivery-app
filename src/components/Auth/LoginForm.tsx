@@ -75,6 +75,7 @@ const LoginForm: React.FC = () => {
             type="submit"
             className="w-full bg-food-orange hover:bg-orange-600"
             disabled={loading}
+            onSubmit={handleSubmit}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>

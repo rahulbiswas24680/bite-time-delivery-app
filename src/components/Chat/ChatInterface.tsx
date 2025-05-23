@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ChatMessage } from '../../utils/types';
 import { addChatMessage, getChatHistoryByOrderId } from '../../data/chatMessages';
-import { getOrderById } from '../../data/orders';
+import { getOrdersByCustomerId } from '../../backend/order';
 import { users } from '../../data/users';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,26 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [order, setOrder] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   
-  const order = getOrderById(orderId);
+  // 🔄 Load specific order by orderId
+  useEffect(() => {
+    const loadOrder = async () => {
+      if (!currentUser) return;
+      try {
+        const customerOrders = await getOrdersByCustomerId(currentUser.id);
+        const foundOrder = customerOrders.find((o) => o.id === orderId);
+        setOrder(foundOrder || null);
+      } catch (error) {
+        console.error('Failed to fetch order:', error);
+        setOrder(null);
+      }
+    };
+
+    loadOrder();
+  }, [currentUser, orderId]);
   
   // Determine the chat partner based on current user
   const chatPartnerId = currentUser?.role === 'customer' 

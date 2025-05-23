@@ -31,14 +31,16 @@ const Home: React.FC = () => {
                   >
                     Order Now
                   </Button>
-                  <Button 
-                    variant="outline"
-                    className="border-white text-gray-600"
-                    size="lg"
-                    onClick={() => navigate('/register')}
-                  >
-                    Register
-                  </Button>
+                  {!localStorage.getItem('currentUser') && (
+                    <Button 
+                      variant="outline"
+                      className="border-white text-gray-600"
+                      size="lg"
+                      onClick={() => navigate('/register')}
+                    >
+                      Register
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="relative">
