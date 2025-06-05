@@ -12,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Menu, User } from 'lucide-react';
+import ShopSelector from './ShopSelector';
 
 const Navbar: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -26,38 +28,29 @@ const Navbar: React.FC = () => {
     <header className="bg-white shadow-sm sticky top-0 z-10">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center">
               <span className="text-xl font-bold text-food-orange">BiteTime</span>
             </Link>
+            
+            {/* Show shop selector for customers */}
+            {currentUser?.role === 'customer' && (
+              <div className="hidden sm:block">
+                <ShopSelector />
+              </div>
+            )}
           </div>
           
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-4">
             <Link to="/" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange">
               Home
             </Link>
             
-            {!currentUser && (
-              <>
-                <Link 
-                  to="/login" 
-                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
-                >
-                  Login
-                </Link>
-                <Link 
-                  to="/register" 
-                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
-                >
-                  Register
-                </Link>
-              </>
-            )}
-            
             {currentUser?.role === 'customer' && (
               <>
                 <Link 
-                  to="/customer/menu" 
+                  to="/customer/downtown-pizza/menu" 
                   className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
                 >
                   Menu
@@ -101,8 +94,17 @@ const Navbar: React.FC = () => {
             )}
           </nav>
           
-          {currentUser ? (
-            <div className="flex items-center">
+          {/* Right side with account dropdown and mobile menu */}
+          <div className="flex items-center space-x-2">
+            {/* Shop selector for mobile customers */}
+            {currentUser?.role === 'customer' && (
+              <div className="sm:hidden">
+                <ShopSelector />
+              </div>
+            )}
+            
+            {/* Account Dropdown or Sign In */}
+            {currentUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -131,88 +133,65 @@ const Navbar: React.FC = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-          ) : (
-            <div className="hidden md:block">
+            ) : (
               <Button 
                 asChild
                 className="bg-food-orange hover:bg-orange-600"
               >
                 <Link to="/login">Sign In</Link>
               </Button>
+            )}
+            
+            {/* Mobile menu dropdown */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to="/">Home</Link>
+                  </DropdownMenuItem>
+                  
+                  {!currentUser ? (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/login">Login</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/register">Register</Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : currentUser.role === 'customer' ? (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/customer/downtown-pizza/menu">Menu</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/customer/orders">My Orders</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/customer/chat">Chat</Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/owner/dashboard">Dashboard</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/owner/orders">Orders</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/owner/chat">Chat</Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          )}
-          
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <DropdownMenuItem asChild>
-                  <Link to="/">Home</Link>
-                </DropdownMenuItem>
-                
-                {!currentUser ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/login">Login</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/register">Register</Link>
-                    </DropdownMenuItem>
-                  </>
-                ) : currentUser.role === 'customer' ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/customer/menu">Menu</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/customer/orders">My Orders</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/customer/chat">Chat</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      Logout
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/owner/dashboard">Dashboard</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/owner/orders">Orders</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/owner/chat">Chat</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      Logout
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
       </div>

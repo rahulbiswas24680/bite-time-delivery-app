@@ -40,11 +40,13 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* Customer Routes */}
+            {/* Customer Routes with shop selection */}
+            <Route path="/customer/:shopSlug/menu" element={<Menu />} />
             <Route path="/customer/menu" element={<Menu />} />
             <Route path="/customer/orders" element={<Orders />} />
             <Route path="/customer/chat" element={<CustomerChat />} />
             <Route path="/customer/chat/:orderId" element={<CustomerChat />} />
+            <Route path="/customer/:shopSlug/checkout" element={<Checkout />} />
             <Route path="/customer/checkout" element={<Checkout />} />
             
             {/* Owner Routes */}

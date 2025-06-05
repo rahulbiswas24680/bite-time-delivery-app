@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { MenuItem } from '../../utils/types';
 import { menuItems, getMenuCategories } from '../../data/menuItems';
@@ -20,6 +20,7 @@ interface CartItem {
 const Menu: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { shopSlug } = useParams();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showCart, setShowCart] = useState(false);
@@ -85,8 +86,11 @@ const Menu: React.FC = () => {
       return;
     }
     
-    // Navigate to checkout with cart items as state
-    navigate('/customer/checkout', { state: { cartItems: cart } });
+    // Navigate to checkout with shop-specific URL if available
+    const checkoutPath = shopSlug 
+      ? `/customer/${shopSlug}/checkout` 
+      : '/customer/checkout';
+    navigate(checkoutPath, { state: { cartItems: cart } });
   };
   
   // If user is not logged in or not a customer, redirect to login
@@ -101,6 +105,15 @@ const Menu: React.FC = () => {
       <Navbar />
       
       <main className="flex-1 container mx-auto px-4 py-8">
+        {/* Show shop name if available */}
+        {shopSlug && (
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-600 capitalize">
+              {shopSlug.replace('-', ' ')}
+            </h2>
+          </div>
+        )}
+        
         <div className="flex flex-col md:flex-row gap-8">
           {/* Main content area */}
           <div className="md:flex-1">
