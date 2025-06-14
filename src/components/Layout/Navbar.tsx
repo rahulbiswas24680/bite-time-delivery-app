@@ -103,7 +103,7 @@ const Navbar: React.FC = () => {
               </div>
             )}
             
-            {/* Account Dropdown or Sign In */}
+            {/* Account Dropdown for ALL devices */}
             {currentUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -123,6 +123,12 @@ const Navbar: React.FC = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <span className="text-sm">{currentUser.email}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/billing" className="text-food-orange font-semibold">
+                      Billing
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
@@ -155,37 +161,55 @@ const Navbar: React.FC = () => {
                     <Link to="/">Home</Link>
                   </DropdownMenuItem>
                   
-                  {!currentUser ? (
+                  {currentUser ? (
+                    <>
+                      {/* Mobile Billing link in the dropdown */}
+                      <DropdownMenuItem asChild>
+                        <Link to="/billing" className="text-food-orange font-semibold">
+                          Billing
+                        </Link>
+                      </DropdownMenuItem>
+                      {/* the rest depending on role */}
+                      {currentUser.role === 'customer' ? (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link to="/customer/downtown-pizza/menu">Menu</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/customer/orders">My Orders</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/customer/chat">Chat</Link>
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link to="/owner/dashboard">Dashboard</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/owner/orders">Orders</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/owner/chat">Chat</Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={handleLogout}
+                        className="text-red-500 cursor-pointer"
+                      >
+                        Log Out
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
                     <>
                       <DropdownMenuItem asChild>
                         <Link to="/login">Login</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/register">Register</Link>
-                      </DropdownMenuItem>
-                    </>
-                  ) : currentUser.role === 'customer' ? (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/customer/downtown-pizza/menu">Menu</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/customer/orders">My Orders</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/customer/chat">Chat</Link>
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/owner/dashboard">Dashboard</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/owner/orders">Orders</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/owner/chat">Chat</Link>
                       </DropdownMenuItem>
                     </>
                   )}

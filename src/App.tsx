@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +24,9 @@ import OwnerOrders from "./pages/Owner/Orders";
 // Shared
 import NotFound from "./pages/NotFound";
 
+// Billing Page
+import Billing from "./pages/Billing";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -39,6 +41,8 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            {/* Billing Route */}
+            <Route path="/billing" element={<Billing />} />
             
             {/* Customer Routes with shop selection */}
             <Route path="/customer/:shopSlug/menu" element={<Menu />} />
