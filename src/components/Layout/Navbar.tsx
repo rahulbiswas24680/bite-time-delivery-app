@@ -193,11 +193,19 @@ const Navbar: React.FC = () => {
                   {currentUser ? (
                     <>
                       {/* Mobile Billing link in the dropdown */}
-                      <DropdownMenuItem asChild>
-                        <Link to="/billing" className="text-food-orange font-semibold">
-                          Billing
-                        </Link>
-                      </DropdownMenuItem>
+                      {currentUser.role === "owner" ? (
+                        <DropdownMenuItem asChild>
+                          <Link to="/owner/billing" className="text-food-orange font-semibold">
+                            Billing
+                          </Link>
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem asChild>
+                          <Link to="/billing" className="text-food-orange font-semibold">
+                            Billing
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                       {/* the rest depending on role */}
                       {currentUser.role === 'customer' ? (
                         <>
