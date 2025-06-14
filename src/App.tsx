@@ -20,6 +20,7 @@ import Checkout from "./pages/Customer/Checkout";
 import Dashboard from "./pages/Owner/Dashboard";
 import OwnerChat from "./pages/Owner/Chat";
 import OwnerOrders from "./pages/Owner/Orders";
+import OwnerBilling from "./pages/Owner/Billing";
 
 // Shared
 import NotFound from "./pages/NotFound";
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/owner/chat" element={<OwnerChat />} />
             <Route path="/owner/chat/:orderId" element={<OwnerChat />} />
             <Route path="/owner/orders" element={<OwnerOrders />} />
+            <Route path="/owner/billing" element={<OwnerBilling />} />
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,10 +13,12 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Menu, User } from 'lucide-react';
 import ShopSelector from './ShopSelector';
+import { useLocation } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const handleLogout = () => {
     logout();
@@ -90,6 +91,13 @@ const Navbar: React.FC = () => {
                 >
                   Chat
                 </Link>
+                {/* Billings link for owners in main navbar */}
+                <Link
+                  to="/owner/billing"
+                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
+                >
+                  Billing
+                </Link>
               </>
             )}
           </nav>
@@ -125,11 +133,22 @@ const Navbar: React.FC = () => {
                     <span className="text-sm">{currentUser.email}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/billing" className="text-food-orange font-semibold">
-                      Billing
-                    </Link>
-                  </DropdownMenuItem>
+                  {/* Owner-specific billing in dropdown */}
+                  {currentUser.role === "owner" && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/owner/billing" className="text-food-orange font-semibold">
+                        Billing
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {/* Customer billing in dropdown */}
+                  {currentUser.role === "customer" && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/billing" className="text-food-orange font-semibold">
+                        Billing
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     onClick={handleLogout}

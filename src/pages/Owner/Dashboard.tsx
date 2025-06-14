@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +12,8 @@ import { getMenuItemById } from '../../data/menuItems';
 import { getCustomerLocation, estimateTravelTime } from '../../data/locations';
 import { users } from '../../data/users';
 import Map from '../../components/Map';
+import MenuCategoryManager from '../../components/Owner/MenuCategoryManager';
+import WithdrawModal from '../../components/Owner/WithdrawModal';
 
 const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
@@ -67,6 +68,17 @@ const Dashboard: React.FC = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
   
+  // Calculate today's total cash (simulate by sum of today's orders)
+  const getTodayCash = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const ordersToday = pendingOrdersState.filter(order =>
+      order.status !== 'cancelled' &&
+      order.status !== 'completed' &&
+      order.createdAt.slice(0, 10) === today
+    );
+    return ordersToday.reduce((sum, o) => sum + o.totalAmount, 0);
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -81,42 +93,15 @@ const Dashboard: React.FC = () => {
             Refresh
           </Button>
         </div>
-        
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Order Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Pending</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-yellow-500">{ordersByStatus.pending.length}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Confirmed</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-blue-500">{ordersByStatus.confirmed.length}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Preparing</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-purple-500">{ordersByStatus.preparing.length}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Ready</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-food-green">{ordersByStatus.ready.length}</p>
-              </CardContent>
-            </Card>
+        {/* Cash stats for owners */}
+        <div className="mb-8 flex gap-4 items-center">
+          <div className="rounded border p-4 flex flex-col gap-2 bg-green-50 min-w-[220px]">
+            <div className="font-bold text-lg">Cash Stored Today:</div>
+            <div className="text-2xl font-bold text-food-green">₹{getTodayCash()}</div>
+            <WithdrawModal cashToday={getTodayCash()} />
+          </div>
+          <div className="flex-1">
+            <MenuCategoryManager />
           </div>
         </div>
         
