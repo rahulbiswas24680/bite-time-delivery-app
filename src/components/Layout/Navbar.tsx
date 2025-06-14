@@ -34,11 +34,21 @@ const Navbar: React.FC = () => {
               <span className="text-xl font-bold text-food-orange">BiteTime</span>
             </Link>
             
-            {/* Show shop selector for customers */}
+            {/* Shop selector for customers */}
             {currentUser?.role === 'customer' && (
               <div className="hidden sm:block">
                 <ShopSelector />
               </div>
+            )}
+            {/* Dashboard shortcut for owners */}
+            {currentUser?.role === 'owner' && (
+              <Link
+                to="/owner/dashboard"
+                className="pl-3 text-sm font-bold text-food-orange hover:underline"
+                data-testid="navbar-owner-dashboard-link"
+              >
+                Dashboard
+              </Link>
             )}
           </div>
           
