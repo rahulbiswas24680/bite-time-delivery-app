@@ -1,28 +1,46 @@
 
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import Navbar from '../../components/Layout/Navbar';
-import ChatInterface from '../../components/Chat/ChatInterface';
-import { getPendingOrders, getOrderById } from '../../data/orders';
+import { getOrdersByShopId } from '@/backend/order';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import ChatInterface from '../../components/Chat/ChatInterface';
+import Navbar from '../../components/Layout/Navbar';
+import { useAuth } from '../../contexts/AuthContext';
+import { getOrderById, getPendingOrders } from '../../data/orders';
+import { Order } from '../../utils/types';
 
 const OwnerChat: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
-  const { currentUser } = useAuth();
+  const [orders, setOrders] = React.useState<Order[]>([]);
+  const shopId = useParams().shopId!;
+  const { currentUser, currentShopId } = useAuth();
   const navigate = useNavigate();
   
   // Redirect if not logged in or not an owner
   React.useEffect(() => {
     if (!currentUser) {
       navigate('/login');
+    } else if (!shopId) {
+      navigate('/not-found');
     } else if (currentUser.role !== 'owner') {
       navigate('/customer/menu');
     }
   }, [currentUser, navigate]);
+
+
+  React.useEffect(() => {
+      const fetchOrders = async () => {
+        if (currentShopId) {
+          const data = await getOrdersByShopId(currentShopId);
+          setOrders(data);
+        }
+      };
+  
+      fetchOrders();
+    }, [currentShopId]);
   
   // Get all active orders
-  const activeOrders = getPendingOrders();
+  const activeOrders = getPendingOrders(orders);
   
   if (!orderId) {
     return (
@@ -35,7 +53,7 @@ const OwnerChat: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6 text-center">
               <p className="text-gray-600">No active orders to chat about.</p>
               <button
-                onClick={() => navigate('/owner/dashboard')}
+                onClick={() => navigate(`/owner/dashboard/${shopId}`)}
                 className="mt-4 bg-food-orange hover:bg-orange-600 text-white font-medium py-2 px-4 rounded"
               >
                 Back to Dashboard
@@ -47,7 +65,7 @@ const OwnerChat: React.FC = () => {
                 <Card 
                   key={order.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => navigate(`/owner/chat/${order.id}`)}
+                  onClick={() => navigate(`/owner/chat/${shopId}/${order.id}`)}
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Order #{order.id}</CardTitle>
@@ -76,7 +94,7 @@ const OwnerChat: React.FC = () => {
   }
   
   // Get the specific order
-  const order = getOrderById(orderId);
+  const order = getOrderById(orders, orderId);
   
   if (!order) {
     return (
@@ -87,7 +105,7 @@ const OwnerChat: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md p-6 text-center">
             <p className="text-red-500">Order not found.</p>
             <button
-              onClick={() => navigate('/owner/chat')}
+              onClick={() => navigate(`/owner/chat/${shopId}`)}
               className="mt-4 bg-food-orange hover:bg-orange-600 text-white font-medium py-2 px-4 rounded"
             >
               Back to Conversations
@@ -104,7 +122,7 @@ const OwnerChat: React.FC = () => {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex items-center mb-6">
           <button
-            onClick={() => navigate('/owner/chat')}
+            onClick={() => navigate(`/owner/chat/${shopId}`)}
             className="text-food-orange hover:underline mr-4"
           >
             ← All Conversations

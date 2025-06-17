@@ -1,35 +1,65 @@
 
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { getPendingOrders, updateOrderStatus } from '../../data/orders';
-import Navbar from '../../components/Layout/Navbar';
-import { Order } from '../../utils/types';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { getMenuItemById } from '../../data/menuItems';
-import { getCustomerLocation, estimateTravelTime } from '../../data/locations';
-import { users } from '../../data/users';
+import React from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import Navbar from '../../components/Layout/Navbar';
 import Map from '../../components/Map';
+import { useAuth } from '../../contexts/AuthContext';
+import { estimateTravelTime } from '../../data/locations';
+import { getMenuItemById } from '../../data/menuItems';
+import { getPendingOrders, updateOrderStatus } from '../../data/orders';
+import { getOrdersByShopId } from '@/backend/order';
+import { getCustomerUsers } from '../../data/users';
+import { Order, User } from '../../utils/types';
+import { Link } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, currentShopId } = useAuth();
+
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [orders, setOrders] = React.useState<Order[]>([]);
+
   const navigate = useNavigate();
-  
+
   // If user is not logged in or not an owner, redirect to login
   React.useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser && !currentShopId) {
       navigate('/login');
-    } else if (currentUser.role !== 'owner') {
+    } else if (currentUser && currentUser.role !== 'owner') {
       navigate('/customer/menu');
+    } else if (!currentShopId) {
+      navigate('*');
     }
   }, [currentUser, navigate]);
-  
+
+
+  React.useEffect(() => {
+    const fetchOrders = async () => {
+      if (currentShopId) {
+        const data = await getOrdersByShopId(currentShopId);
+        setOrders(data);
+      }
+    };
+
+    fetchOrders();
+  }, [currentShopId]);
+
+
+  React.useEffect(() => {
+    const fetchCustomers = async () => {
+      const data = await getCustomerUsers();
+      setUsers(data);
+    };
+
+    fetchCustomers();
+  }, []);
+
   // Get all pending orders
-  const pendingOrders = getPendingOrders();
-  
+  const pendingOrders = getPendingOrders(orders);
+
   // Group orders by status
   const ordersByStatus: Record<string, Order[]> = {
     pending: [],
@@ -37,51 +67,66 @@ const Dashboard: React.FC = () => {
     preparing: [],
     ready: [],
   };
-  
+
   pendingOrders.forEach(order => {
     if (ordersByStatus[order.status]) {
       ordersByStatus[order.status].push(order);
     }
   });
-  
+
   // Handle status update
-  const handleUpdateStatus = (orderId: string, newStatus: Order['status']) => {
-    updateOrderStatus(orderId, newStatus);
+  const handleUpdateStatus = (orderId: string, newStatus: Order['status'], currentShopId: string) => {
+    updateOrderStatus(orders, orderId, newStatus, currentShopId);
     // Force a re-render
-    setPendingOrders([...getPendingOrders()]);
+    setPendingOrders([...getPendingOrders(orders)]);
   };
-  
+
   // State to track orders (for re-renders)
   const [pendingOrdersState, setPendingOrders] = React.useState(pendingOrders);
-  
+
   // Get customer name from order
   const getCustomerName = (customerId: string) => {
     const customer = users.find(user => user.id === customerId);
     return customer ? customer.name : 'Unknown Customer';
   };
-  
+
   // Format date/time
   const formatTime = (dateString?: string) => {
     if (!dateString) return 'Not set';
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-  
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
+
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
           <h1 className="text-3xl font-bold">Restaurant Dashboard</h1>
-          <Button 
-            onClick={() => setPendingOrders([...getPendingOrders()])}
-            variant="outline"
-          >
-            Refresh
-          </Button>
+
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button 
+            className="w-full sm:w-auto bg-green-500 hover:bg-green-700 text-white"
+            onClick={() => console.log('Withdraw Cash button clicked')}
+            >
+                Withdraw Cash
+            </Button>
+            <Button 
+            className="w-full sm:w-auto"
+            onClick={() => navigate(`/owner/menus/${currentShopId}`)}
+            >
+                Manage Menus
+            </Button>
+            <Button
+              onClick={() => setPendingOrders([...getPendingOrders(orders)])}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
-        
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Order Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -119,7 +164,7 @@ const Dashboard: React.FC = () => {
             </Card>
           </div>
         </div>
-        
+
         <div className="space-y-6">
           {/* Orders that need attention first */}
           {ordersByStatus.pending.length > 0 && (
@@ -171,15 +216,15 @@ const Dashboard: React.FC = () => {
                       </div>
                     </CardContent>
                     <CardFooter className="bg-gray-50 flex justify-between">
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={() => navigate(`/owner/chat/${order.id}`)}
                       >
                         Chat with Customer
                       </Button>
-                      <Button 
+                      <Button
                         className="bg-food-orange hover:bg-orange-600"
-                        onClick={() => handleUpdateStatus(order.id, 'confirmed')}
+                        onClick={() => handleUpdateStatus(order.id, 'confirmed', currentShopId)}
                       >
                         Confirm Order
                       </Button>
@@ -189,7 +234,7 @@ const Dashboard: React.FC = () => {
               </div>
             </section>
           )}
-          
+
           {/* Confirmed orders */}
           {ordersByStatus.confirmed.length > 0 && (
             <section>
@@ -231,8 +276,8 @@ const Dashboard: React.FC = () => {
                             })}
                           </ul>
                         </div>
-                        
-                        <div className="p-4 bg-gray-50 border-t border-b">
+
+                        {/* <div className="p-4 bg-gray-50 border-t border-b">
                           <h4 className="font-medium mb-2">Customer Location</h4>
                           <div className="h-52">
                             <Map customerId={order.customerId} showRoute={true} />
@@ -240,23 +285,23 @@ const Dashboard: React.FC = () => {
                           {travelInfo.minutes > 0 && (
                             <div className="mt-2 text-sm">
                               <p>
-                                <span className="font-medium">Customer ETA:</span> {travelInfo.minutes} minutes 
+                                <span className="font-medium">Customer ETA:</span> {travelInfo.minutes} minutes
                                 ({(travelInfo.distance / 1000).toFixed(1)} km away)
                               </p>
                             </div>
                           )}
-                        </div>
+                        </div> */}
                       </CardContent>
                       <CardFooter className="bg-gray-50 flex justify-between">
-                        <Button 
+                        <Button
                           variant="outline"
                           onClick={() => navigate(`/owner/chat/${order.id}`)}
                         >
                           Chat
                         </Button>
-                        <Button 
+                        <Button
                           className="bg-food-orange hover:bg-orange-600"
-                          onClick={() => handleUpdateStatus(order.id, 'preparing')}
+                          onClick={() => handleUpdateStatus(order.id, 'preparing', currentShopId)}
                         >
                           Start Preparing
                         </Button>
@@ -267,7 +312,7 @@ const Dashboard: React.FC = () => {
               </div>
             </section>
           )}
-          
+
           {/* Preparing orders */}
           {ordersByStatus.preparing.length > 0 && (
             <section>
@@ -306,15 +351,15 @@ const Dashboard: React.FC = () => {
                       </ul>
                     </CardContent>
                     <CardFooter className="bg-gray-50 flex justify-between">
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={() => navigate(`/owner/chat/${order.id}`)}
                       >
                         Chat
                       </Button>
-                      <Button 
+                      <Button
                         className="bg-food-green hover:bg-green-600"
-                        onClick={() => handleUpdateStatus(order.id, 'ready')}
+                        onClick={() => handleUpdateStatus(order.id, 'ready', currentShopId)}
                       >
                         Mark as Ready
                       </Button>
@@ -324,7 +369,7 @@ const Dashboard: React.FC = () => {
               </div>
             </section>
           )}
-          
+
           {/* Ready orders */}
           {ordersByStatus.ready.length > 0 && (
             <section>
@@ -365,14 +410,14 @@ const Dashboard: React.FC = () => {
                         </ul>
                       </CardContent>
                       <CardFooter className="bg-gray-50 flex justify-between">
-                        <Button 
+                        <Button
                           variant="outline"
                           onClick={() => navigate(`/owner/chat/${order.id}`)}
                         >
                           Chat
                         </Button>
-                        <Button 
-                          onClick={() => handleUpdateStatus(order.id, 'completed')}
+                        <Button
+                          onClick={() => handleUpdateStatus(order.id, 'completed', currentShopId)}
                         >
                           Complete Order
                         </Button>
@@ -383,7 +428,7 @@ const Dashboard: React.FC = () => {
               </div>
             </section>
           )}
-          
+
           {/* If no orders */}
           {pendingOrders.length === 0 && (
             <div className="bg-gray-50 rounded-lg p-8 text-center">

@@ -8,7 +8,7 @@ import OrderCard from '../../components/Order/OrderCard';
 import Map from '../../components/Map';
 
 const Orders: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, currentShopId } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,8 @@ const Orders: React.FC = () => {
     const fetchOrders = async () => {
       if (currentUser) {
         try {
-          const data = await getOrdersByCustomerId(currentUser.id);
+          const data = await getOrdersByCustomerId(currentUser.id, currentShopId);
+          console.log('shop id', currentShopId, data);
           setOrders(data);
         } catch (error) {
           console.error('Failed to fetch orders:', error);
@@ -38,7 +39,7 @@ const Orders: React.FC = () => {
     };
 
     fetchOrders();
-  }, [currentUser]);
+  }, [currentUser, currentShopId]);
     
   // Separate active and past orders
   const activeOrders = orders.filter(order => 

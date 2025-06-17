@@ -20,9 +20,12 @@ import Checkout from "./pages/Customer/Checkout";
 import Dashboard from "./pages/Owner/Dashboard";
 import OwnerChat from "./pages/Owner/Chat";
 import OwnerOrders from "./pages/Owner/Orders";
+import OwnerShops from "./pages/Owner/OwnerShops";
 
 // Shared
 import NotFound from "./pages/NotFound";
+import Billings from "./pages/Owner/Billings";
+import MenuManagement from "./pages/Owner/MenuManagement";
 
 const queryClient = new QueryClient();
 
@@ -40,17 +43,25 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             
             {/* Customer Routes */}
-            <Route path="/customer/menu" element={<Menu />} />
-            <Route path="/customer/orders" element={<Orders />} />
-            <Route path="/customer/chat" element={<CustomerChat />} />
-            <Route path="/customer/chat/:orderId" element={<CustomerChat />} />
-            <Route path="/customer/checkout" element={<Checkout />} />
+
+            {/* Customer Routes with shop selection */}
+            <Route path="/customer/:shopSlug/menu" element={<Menu />} />
+
+            {/* <Route path="/customer/menu" element={<Menu />} /> */}
+            <Route path="/customer/:shopSlug/orders" element={<Orders />} />
+            <Route path="/customer/:shopSlug/chat" element={<CustomerChat />} />
+            <Route path="/customer/:shopSlug/chat/:orderId" element={<CustomerChat />} />
+            <Route path="/customer/:shopSlug/checkout" element={<Checkout />} />
+            
             
             {/* Owner Routes */}
-            <Route path="/owner/dashboard" element={<Dashboard />} />
-            <Route path="/owner/chat" element={<OwnerChat />} />
-            <Route path="/owner/chat/:orderId" element={<OwnerChat />} />
-            <Route path="/owner/orders" element={<OwnerOrders />} />
+            <Route path="/owner/dashboard/:shopId" element={<Dashboard />} />
+            <Route path="/owner/menus/:shopId" element={<MenuManagement />} />
+            <Route path="/owner/chat/:shopId" element={<OwnerChat />} />
+            <Route path="/owner/chat/:shopId/:orderId" element={<OwnerChat />} />
+            <Route path="/owner/orders/:shopId" element={<OwnerOrders />} />
+            <Route path="/owner/my-shops" element={<OwnerShops />} />
+            <Route path="/owner/:shopId/billing" element={<Billings />} />
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />

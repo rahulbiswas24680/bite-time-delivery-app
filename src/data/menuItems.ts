@@ -1,68 +1,115 @@
 
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { MenuItem } from '../utils/types';
+import { db } from '@/backend/firebase';
 
-// Static menu data for demonstration
-export const menuItems: MenuItem[] = [
-  {
-    id: '1',
-    name: 'Classic Cheeseburger',
-    description: 'Juicy beef patty with melted cheese, lettuce, tomato, and special sauce',
-    price: 8.99,
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    category: 'Burgers',
-  },
-  {
-    id: '2',
-    name: 'Margherita Pizza',
-    description: 'Traditional pizza with tomato sauce, mozzarella, and fresh basil',
-    price: 12.99,
-    image: 'https://images.unsplash.com/photo-1595708684082-a173bb3a06c5?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    category: 'Pizza',
-  },
-  {
-    id: '3',
-    name: 'Caesar Salad',
-    description: 'Crisp romaine lettuce, croutons, parmesan cheese with Caesar dressing',
-    price: 7.99,
-    image: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    category: 'Salads',
-  },
-  {
-    id: '4',
-    name: 'Chicken Wings',
-    description: 'Crispy wings tossed in your choice of buffalo, BBQ, or teriyaki sauce',
-    price: 10.99,
-    image: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    category: 'Appetizers',
-  },
-  {
-    id: '5',
-    name: 'Veggie Wrap',
-    description: 'Fresh vegetables, hummus, and feta cheese wrapped in a spinach tortilla',
-    price: 8.49,
-    image: 'https://images.unsplash.com/photo-1640719028782-8230f1bdc515?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    category: 'Sandwiches',
-  },
-  {
-    id: '6',
-    name: 'Chocolate Brownie Sundae',
-    description: 'Warm chocolate brownie topped with vanilla ice cream and hot fudge',
-    price: 6.99,
-    image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    category: 'Desserts',
-  },
-];
+
 
 // Helper functions to work with menu data
-export const getMenuItemById = (id: string): MenuItem | undefined => {
-  return menuItems.find(item => item.id === id);
+/**
+ * Fetches a menu item by ID for a specific shop
+ */
+export const getMenuItemById = async (shopId: string, itemId: string): Promise<MenuItem | undefined> => {
+  try {
+    const q = query(
+      collection(db, "menuItems"),
+      where("shopId", "==", shopId),
+      where("id", "==", itemId)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) return undefined;
+
+    return querySnapshot.docs[0].data() as MenuItem;
+  } catch (error) {
+    console.error("Error fetching menu item:", error);
+    return undefined;
+  }
 };
 
-export const getMenuItemsByCategory = (category: string): MenuItem[] => {
-  return menuItems.filter(item => item.category === category);
+/**
+ * Fetches all menu items for a specific category in a shop
+ */
+export const getMenuItemsByCategory = async (shopId: string, category: string): Promise<MenuItem[]> => {
+  try {
+    const q = query(
+      collection(db, "menuItems"),
+      where("shopId", "==", shopId),
+      where("category", "==", category)
+    );
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map(doc => doc.data() as MenuItem);
+  } catch (error) {
+    console.error("Error fetching menu items by category:", error);
+    return [];
+  }
 };
 
-export const getMenuCategories = (): string[] => {
-  const categories = new Set(menuItems.map(item => item.category));
-  return Array.from(categories);
+/**
+ * Fetches all unique categories for a specific shop
+ */
+export const getMenuCategories = async (shopId: string): Promise<{id: string, name: string}[]> => {
+  try {
+    // First get all unique category IDs from menu items
+    const menuItemsQuery = query(
+      collection(db, "menuItems"),
+      where("shopId", "==", shopId)
+    );
+    const menuItemsSnapshot = await getDocs(menuItemsQuery);
+    
+    const categoryIds = new Set<string>();
+    console.log('categoryIds', categoryIds);
+    menuItemsSnapshot.forEach(doc => {
+      const data = doc.data() as MenuItem;
+      if (data.category) {
+        categoryIds.add(data.category);
+      }
+    });
+
+    // Then get the names for these categories
+    const categoriesPromises = Array.from(categoryIds).map(async (categoryId) => {
+      const categoryDoc = await getDoc(doc(db, "categories", categoryId));
+      if (categoryDoc.exists()) {
+        return {
+          id: categoryId,
+          name: categoryDoc.data().name || 'Unnamed Category'
+        };
+      }
+      return {
+        id: categoryId,
+        name: 'Unnamed Category'
+      };
+    });
+
+    const categories = await Promise.all(categoriesPromises);
+    return categories;
+  } catch (error) {
+    console.error("Error fetching menu categories:", error);
+    return [];
+  }
+};
+
+/**
+ * Fetches all menu items for a specific shop
+ */
+export const getAllMenuItems = async (shopId: string): Promise<MenuItem[]> => {
+  try {
+    const q = query(
+      collection(db, "menuItems"),
+      where("shopId", "==", shopId)
+    );
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data() as MenuItem;
+      return {
+        ...data,
+        id: doc.id // Ensure we have the document ID
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching all menu items:", error);
+    return [];
+  }
 };

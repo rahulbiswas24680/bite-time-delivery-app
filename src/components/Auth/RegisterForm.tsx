@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { users } from '../../data/users';
+import { doesUserEmailExist  } from '../../data/users';
 import { useAuth } from '@/contexts/AuthContext';
 
 const RegisterForm: React.FC = () => {
@@ -28,6 +28,16 @@ const RegisterForm: React.FC = () => {
     setError(null);
     setLoading(true);
     
+    // Log form data for debugging
+    console.log('Form Data:', {
+      name,
+      email,
+      phone,
+      password,
+      confirmPassword,
+      role
+    });
+    
     // Validation
     if (password !== confirmPassword) {
       setError("Passwords don't match");
@@ -37,18 +47,19 @@ const RegisterForm: React.FC = () => {
     
     try {
       // Check if email already exists
-      const emailExists = users.some(user => user.email === email);
+      const emailExists = await doesUserEmailExist(email);
       if (emailExists) {
         setError('Email already in use');
         return;
       }
 
       const user = await signup(email, password, name, phone, role);
+      console.log('Signup response:', user);
+      
       if (user) {
         navigate('/login'); // Or redirect wherever needed
       }
-      // After successful registration, redirect to login
-      navigate('/login');
+
     } catch (err) {
       setError('Registration failed. Please try again.');
       console.error('Registration error:', err);
@@ -56,7 +67,6 @@ const RegisterForm: React.FC = () => {
       setLoading(false);
     }
   };
-
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>

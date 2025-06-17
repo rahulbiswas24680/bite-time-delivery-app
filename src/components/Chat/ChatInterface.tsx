@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ChatMessage } from '../../utils/types';
-import { addChatMessage, getChatHistoryByOrderId } from '../../data/chatMessages';
-import { getOrdersByCustomerId } from '../../backend/order';
+import { sendChatMessage, listenToChatMessages } from '../../data/chatMessages';
+import { getOrderById } from '../../backend/order';
 import { users } from '../../data/users';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,14 +23,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
   const [order, setOrder] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // 🔄 Load specific order by orderId
   useEffect(() => {
     const loadOrder = async () => {
       if (!currentUser) return;
       try {
-        const customerOrders = await getOrdersByCustomerId(currentUser.id);
-        const foundOrder = customerOrders.find((o) => o.id === orderId);
+        const foundOrder = await getOrderById(orderId);
         setOrder(foundOrder || null);
       } catch (error) {
         console.error('Failed to fetch order:', error);
@@ -40,89 +39,59 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
 
     loadOrder();
   }, [currentUser, orderId]);
-  
+
   // Determine the chat partner based on current user
-  const chatPartnerId = currentUser?.role === 'customer' 
-    ? '2' // Owner's ID for customer
-    : order?.customerId || ''; // Customer's ID for owner
-    
+  const chatPartnerId =
+    currentUser?.role === 'customer' ? order?.shopOwnerId : order?.customerId || '';
+
   const chatPartner = users.find(user => user.id === chatPartnerId);
 
   useEffect(() => {
-    // Load chat history
-    const loadChatHistory = () => {
-      setLoading(true);
-      try {
-        const history = getChatHistoryByOrderId(orderId);
-        setMessages(history);
-      } catch (error) {
-        console.error('Error loading chat history:', error);
-      } finally {
-        setLoading(false);
-      }
+    if (!orderId) return;
+    console.log('Listening to chat messages for orderId:', orderId);
+    setLoading(true);
+    const unsubscribe = listenToChatMessages(orderId, (newMessages) => {
+      setMessages(newMessages);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubscribe(); // Stop listening when component unmounts or orderId changes
     };
-    
-    loadChatHistory();
-    
-    // Simulate "real-time" updates with interval
-    const intervalId = setInterval(() => {
-      const updatedHistory = getChatHistoryByOrderId(orderId);
-      if (updatedHistory.length !== messages.length) {
-        setMessages(updatedHistory);
-      }
-    }, 3000);
-    
-    return () => clearInterval(intervalId);
   }, [orderId]);
-  
+
   useEffect(() => {
     // Scroll to bottom of chat when messages change
     scrollToBottom();
   }, [messages]);
-  
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-  
-  const handleSendMessage = (e: React.FormEvent) => {
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newMessage.trim() || !currentUser) return;
-    
-    // Create a new message
-    addChatMessage({
+    if (!newMessage.trim() || !currentUser || !chatPartnerId) return;
+    console.log('Sending message:', newMessage);
+    await sendChatMessage(orderId, {
       senderId: currentUser.id,
       receiverId: chatPartnerId,
       message: newMessage.trim(),
-      orderId: orderId,
+      orderId,
     });
-    
-    // Update the local state
-    setMessages([
-      ...messages,
-      {
-        id: (messages.length + 1).toString(),
-        senderId: currentUser.id,
-        receiverId: chatPartnerId,
-        message: newMessage.trim(),
-        timestamp: new Date().toISOString(),
-        orderId: orderId,
-      },
-    ]);
-    
-    // Clear the input
+
     setNewMessage('');
   };
-  
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-  
+
   if (!currentUser) {
     return <div>Please log in to use the chat</div>;
   }
-  
+
   if (!order) {
     return <div>Order not found</div>;
   }
@@ -147,10 +116,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
             </div>
           </div>
           <Badge variant={
-            order.status === 'pending' ? 'outline' : 
-            order.status === 'confirmed' ? 'secondary' : 
-            order.status === 'preparing' ? 'default' : 
-            order.status === 'ready' ? 'default' : 'outline'
+            order.status === 'pending' ? 'outline' :
+              order.status === 'confirmed' ? 'secondary' :
+                order.status === 'preparing' ? 'default' :
+                  order.status === 'ready' ? 'default' : 'outline'
           }>
             {order.status}
           </Badge>
@@ -171,10 +140,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
               {messages.map((msg) => {
                 const isSender = msg.senderId === currentUser.id;
                 const sender = users.find(user => user.id === msg.senderId);
-                
+
                 return (
-                  <div 
-                    key={msg.id} 
+                  <div
+                    key={msg.id}
                     className={`flex ${isSender ? 'justify-end' : 'justify-start'}`}
                   >
                     <div className={`max-w-[70%] ${isSender ? 'bg-food-orange text-white' : 'bg-gray-100'} rounded-xl p-3`}>
@@ -217,8 +186,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
             placeholder={`Message ${chatPartner?.name || 'the restaurant'}...`}
             className="flex-1 resize-none h-10 py-2"
           />
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={!newMessage.trim()}
             className="bg-food-orange hover:bg-orange-600"
           >

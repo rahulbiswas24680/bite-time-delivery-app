@@ -9,17 +9,19 @@ export const signupUser = async (email: string, password: string, name: string, 
 
   await updateProfile(user, { displayName: name });
 
-  // Save custom user fields in Firestore
-  await setDoc(doc(db, 'users', user.uid), {
+  // Save custom fields in Firestore
+  const userData = {
     id: user.uid,
-    name,
     email,
+    name,
     phone,
     role,
-    createdAt: new Date().toISOString()
-  });
+    createdAt: new Date().toISOString(),
+  };
 
-  return user;
+  await setDoc(doc(db, 'users', user.uid), userData);
+
+  return { user, userData };
 }
 
 export function loginUser(email: string, password: string) {

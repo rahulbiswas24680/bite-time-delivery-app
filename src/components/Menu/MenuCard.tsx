@@ -10,6 +10,14 @@ interface MenuCardProps {
 }
 
 const MenuCard: React.FC<MenuCardProps> = ({ item, onAddToOrder }) => {
+
+
+  const cdnBaseUrl = "https://static.stackorq.xyz";
+
+  const imageUrl = `${cdnBaseUrl}/fs-tandoori-chicken.jpg`;
+
+
+
   return (
     <Card className="h-full overflow-hidden transition-all hover:shadow-md">
       <div className="aspect-video w-full overflow-hidden">

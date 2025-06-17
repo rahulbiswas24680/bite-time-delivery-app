@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 import OrderDetailsModal from './OrderDetailsModal';
+import axios from 'axios';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OrderCardProps {
   order: Order;
@@ -16,14 +18,26 @@ interface OrderCardProps {
 const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
   const navigate = useNavigate();
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  
+  const { currentUser, currentShopId, currentShopSlug } = useAuth();
+
+  // console.log('order----', order.paymentStatus, order);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
   };
-  
+
+  const getPaymentStatusClass = (paymentStatus: Order['paymentStatus']) => {
+    switch (paymentStatus) {
+      case 'paid': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const getStatusClass = (status: Order['status']) => {
-    switch(status) {
+    switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'confirmed': return 'bg-blue-100 text-blue-800';
       case 'preparing': return 'bg-purple-100 text-purple-800';
@@ -34,15 +48,60 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
     }
   };
 
+
+
+
+
+  const handlePayment = async () => {
+    const amount = 100; // INR
+
+    // Create order on your server
+    const { data } = await axios.post('http://localhost:5000/create-order', {
+      amount,
+    });
+
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: data.amount,
+      currency: data.currency,
+      name: 'Bite Lime',
+      description: 'Order Payment',
+      order_id: data.id,
+      image: 'https://play-lh.googleusercontent.com/G4i17GWZ1Oj7c9A1d_hUCJD2YTIjFuclxnopouHJOv9lKrS88QJ6zbrucK3nJ76gj6A',
+      handler: function (response: any) {
+        alert('Payment successful');
+        console.log(response);
+        // Here, save response.razorpay_payment_id to Firebase
+      },
+      prefill: {
+        name: 'Customer Name',
+        email: 'customer@example.com',
+        contact: '9999999999',
+      },
+      theme: {
+        color: '#3399cc',
+      },
+    };
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
+  };
+
   return (
     <>
       <Card className="w-full">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-lg">Order #{order.id}</CardTitle>
-            <Badge variant="outline" className={getStatusClass(order.status)}>
-              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-            </Badge>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-slate-500 font-semibold">Payment: </span>
+              <Badge variant="outline" className={getPaymentStatusClass(order.paymentStatus)}>
+                {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+              </Badge>
+              <span className="text-slate-500 font-semibold">Order Status: </span>
+              <Badge variant="outline" className={getStatusClass(order.status)}>
+                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+              </Badge>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Placed on: {formatDate(order.createdAt)}
@@ -53,7 +112,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
             </p>
           )}
         </CardHeader>
-        
+
         <CardContent>
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Order Items:</h4>
@@ -83,7 +142,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
             </div>
           </div>
         </CardContent>
-        
+
         {showActions && (
           <CardFooter className="flex flex-col gap-2 sm:flex-row justify-between">
             <Button
@@ -94,17 +153,27 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
               <Eye className="h-4 w-4" />
               View Details
             </Button>
-            <Button
-              onClick={() => navigate(`/customer/chat/${order.id}`)}
-              className="bg-food-orange hover:bg-orange-600"
-            >
-              Chat with Restaurant
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+              {order.paymentStatus === 'pending' && (
+                <Button
+                  onClick={() => handlePayment()}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Pay Now
+                </Button>
+              )}
+              <Button
+                onClick={() => navigate(`/customer/${currentShopSlug}/chat/${order.id}`)}
+                className="bg-food-orange hover:bg-orange-600"
+              >
+                Chat with Restaurant
+              </Button>
+            </div>
           </CardFooter>
         )}
       </Card>
 
-      <OrderDetailsModal 
+      <OrderDetailsModal
         order={order}
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}

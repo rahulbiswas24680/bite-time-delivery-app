@@ -23,7 +23,7 @@ interface CheckoutFormValues {
 }
 
 const Checkout: React.FC = () => {
-    const { currentUser } = useAuth();
+    const { currentUser, currentShopId } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [cartItems, setCartItems] = useState<any[]>([]);
@@ -78,6 +78,7 @@ const Checkout: React.FC = () => {
             // 3. Create order in Firestore
             const orderId = await createOrder({
                 customerId: currentUser.id,
+                shopId: currentShopId,
                 name: data.name,
                 phone: data.phone,
                 address: data.address,
@@ -86,7 +87,7 @@ const Checkout: React.FC = () => {
                 items: orderItems,
                 status: 'pending',
                 totalAmount: total,
-                paymentStatus: 'unpaid',
+                paymentStatus: 'pending',
             });
 
             // 4. Clear cart from localStorage

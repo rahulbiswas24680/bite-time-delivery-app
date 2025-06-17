@@ -7,7 +7,7 @@ import ChatInterface from '../../components/Chat/ChatInterface';
 
 const CustomerChat: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
-  const { currentUser } = useAuth();
+  const { currentUser, currentShopId, currentShopSlug } = useAuth();
   const navigate = useNavigate();
   console.log('OrderCard', orderId);
   // Redirect if not logged in or not a customer
@@ -18,7 +18,7 @@ const CustomerChat: React.FC = () => {
       navigate('/owner/dashboard');
     }
   }, [currentUser, navigate]);
-  
+
   if (!orderId) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -28,7 +28,7 @@ const CustomerChat: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <p className="text-center text-gray-600">Please select an order to chat about.</p>
             <button
-              onClick={() => navigate('/customer/orders')}
+              onClick={() => navigate(`/customer/${currentShopSlug}/orders`)}
               className="mt-4 mx-auto block bg-food-orange hover:bg-orange-600 text-white font-medium py-2 px-4 rounded"
             >
               View My Orders
@@ -38,7 +38,7 @@ const CustomerChat: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
