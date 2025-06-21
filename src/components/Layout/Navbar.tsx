@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -101,7 +102,6 @@ const Navbar: React.FC = () => {
                 >
                   Chat
                 </Link>
-                {/* Billings link for owners in main navbar */}
                 <Link
                   to="/owner/billing"
                   className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
@@ -192,21 +192,6 @@ const Navbar: React.FC = () => {
                   
                   {currentUser ? (
                     <>
-                      {/* Mobile Billing link in the dropdown */}
-                      {currentUser.role === "owner" ? (
-                        <DropdownMenuItem asChild>
-                          <Link to="/owner/billing" className="text-food-orange font-semibold">
-                            Billing
-                          </Link>
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem asChild>
-                          <Link to="/billing" className="text-food-orange font-semibold">
-                            Billing
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
-                      {/* the rest depending on role */}
                       {currentUser.role === 'customer' ? (
                         <>
                           <DropdownMenuItem asChild>
@@ -217,6 +202,11 @@ const Navbar: React.FC = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link to="/customer/chat">Chat</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/billing" className="text-food-orange font-semibold">
+                              Billing
+                            </Link>
                           </DropdownMenuItem>
                         </>
                       ) : (
@@ -229,6 +219,11 @@ const Navbar: React.FC = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link to="/owner/chat">Chat</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/owner/billing" className="text-food-orange font-semibold">
+                              Billing
+                            </Link>
                           </DropdownMenuItem>
                         </>
                       )}
