@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -95,6 +94,12 @@ const Navbar: React.FC = () => {
                   className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
                 >
                   Orders
+                </Link>
+                <Link 
+                  to="/owner/payments" 
+                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
+                >
+                  Payments
                 </Link>
                 <Link 
                   to="/owner/chat" 
@@ -216,6 +221,9 @@ const Navbar: React.FC = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link to="/owner/orders">Orders</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/owner/payments">Payments</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link to="/owner/chat">Chat</Link>

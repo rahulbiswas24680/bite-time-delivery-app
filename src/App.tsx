@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +22,8 @@ import Dashboard from "./pages/Owner/Dashboard";
 import OwnerChat from "./pages/Owner/Chat";
 import OwnerOrders from "./pages/Owner/Orders";
 import OwnerBilling from "./pages/Owner/Billing";
+import KYC from "./pages/Owner/KYC";
+import Payments from "./pages/Owner/Payments";
 
 // Shared
 import NotFound from "./pages/NotFound";
@@ -60,6 +63,8 @@ const App = () => (
             <Route path="/owner/chat/:orderId" element={<OwnerChat />} />
             <Route path="/owner/orders" element={<OwnerOrders />} />
             <Route path="/owner/billing" element={<OwnerBilling />} />
+            <Route path="/owner/kyc" element={<KYC />} />
+            <Route path="/owner/payments" element={<Payments />} />
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
