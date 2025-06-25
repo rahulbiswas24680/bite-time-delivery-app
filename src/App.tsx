@@ -26,6 +26,7 @@ import OwnerShops from "./pages/Owner/OwnerShops";
 import NotFound from "./pages/NotFound";
 import Billings from "./pages/Owner/Billings";
 import MenuManagement from "./pages/Owner/MenuManagement";
+import AnonymousRegister from "./pages/Customer/AnonymousRegister";
 
 const queryClient = new QueryClient();
 
@@ -45,9 +46,11 @@ const App = () => (
             {/* Customer Routes */}
 
             {/* Customer Routes with shop selection */}
-            <Route path="/customer/:shopSlug/menu" element={<Menu />} />
 
-            {/* <Route path="/customer/menu" element={<Menu />} /> */}
+            {/* -----------------------------Customer Routes with anonymous registration ------------------------- */}
+            <Route path="/customer/:shopId/anonymous-register" element={<AnonymousRegister />} />
+
+            <Route path="/customer/:shopSlug/menu" element={<Menu />} />
             <Route path="/customer/:shopSlug/orders" element={<Orders />} />
             <Route path="/customer/:shopSlug/chat" element={<CustomerChat />} />
             <Route path="/customer/:shopSlug/chat/:orderId" element={<CustomerChat />} />

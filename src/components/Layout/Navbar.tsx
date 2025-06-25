@@ -16,7 +16,7 @@ import { Menu, User } from 'lucide-react';
 import ShopSelector from './ShopSelector';
 
 
-const Navbar: React.FC = () => {
+const Navbar: React.FC<{ hideShops?: boolean }> = ({ hideShops }) => {  
   const { currentUser, logout, currentShopId, currentShopSlug } = useAuth();
   console.log('currentShopId:', currentShopId);
   const navigate = useNavigate();
@@ -34,11 +34,13 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center">
-              <span className="text-xl font-bold text-food-orange">BiteTime</span>
+              <span className="bg-food-orange text-white px-3 py-2 rounded-md text-lg font-bold tracking-wide">
+                Stackorq
+              </span>
             </Link>
 
             {/* Show shop selector for customers */}
-            {currentUser?.role === 'customer' && (
+            {currentUser?.role === 'customer' && !hideShops && (
               <div className="hidden sm:block">
 
                 <ShopSelector />
@@ -135,7 +137,7 @@ const Navbar: React.FC = () => {
           {/* Right side with account dropdown and mobile menu */}
           <div className="flex items-center space-x-2">
             {/* Shop selector for mobile customers */}
-            {currentUser?.role === 'customer' && (
+            {currentUser?.role === 'customer' && !hideShops && (
               <div className="sm:hidden">
                 <ShopSelector />
               </div>

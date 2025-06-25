@@ -9,24 +9,22 @@ import { db } from '@/backend/firebase';
 /**
  * Fetches a menu item by ID for a specific shop
  */
-export const getMenuItemById = async (shopId: string, itemId: string): Promise<MenuItem | undefined> => {
+export const getMenuItemById = async (itemId: string): Promise<MenuItem | undefined> => {
   try {
     const q = query(
       collection(db, "menuItems"),
-      where("shopId", "==", shopId),
       where("id", "==", itemId)
     );
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) return undefined;
-
+    // console.log(querySnapshot.docs[0].data(), '==');
     return querySnapshot.docs[0].data() as MenuItem;
   } catch (error) {
     console.error("Error fetching menu item:", error);
     return undefined;
   }
 };
-
 /**
  * Fetches all menu items for a specific category in a shop
  */

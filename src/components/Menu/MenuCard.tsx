@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MenuItem } from '../../utils/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCategoryNameById } from '@/backend/menu';
 
 interface MenuCardProps {
   item: MenuItem;
@@ -10,7 +11,17 @@ interface MenuCardProps {
 }
 
 const MenuCard: React.FC<MenuCardProps> = ({ item, onAddToOrder }) => {
-
+  const [categoryName, setCategoryName] = useState<string>("");
+  console.log(item.category, '--');
+  useEffect(() => {
+    const fetchCategoryName = async () => {
+      if (item.category) {
+        const name = await getCategoryNameById(item.category);
+        if (name) setCategoryName(name);
+      }
+    };
+    fetchCategoryName();
+  }, [item.category]);
 
   const cdnBaseUrl = "https://static.stackorq.xyz";
 
@@ -22,15 +33,15 @@ const MenuCard: React.FC<MenuCardProps> = ({ item, onAddToOrder }) => {
     <Card className="h-full overflow-hidden transition-all hover:shadow-md">
       <div className="aspect-video w-full overflow-hidden">
         <img 
-          src={item.image} 
+          src={item.image || imageUrl} 
           alt={item.name} 
           className="h-full w-full object-cover transition-transform hover:scale-105"
         />
       </div>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-bold">{item.name}</CardTitle>
-        <CardDescription className="text-food-darkGray text-sm">{item.category}</CardDescription>
-      </CardHeader>
+        <CardDescription className="text-food-darkGray text-sm">{categoryName || "Loading..."}</CardDescription>
+      </CardHeader>      
       <CardContent>
         <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
         <p className="mt-3 text-lg font-bold text-food-orange">${item.price.toFixed(2)}</p>

@@ -76,10 +76,3 @@ export const addNewOrder = (orders: Order[], order: Omit<Order, 'id' | 'createdA
   orders.push(newOrder);
   return newOrder;
 };
-
-export const calculateOrderTotal = (items: { menuItemId: string; quantity: number }[]): number => {
-  return items.reduce((total, item) => {
-    const menuItem = getMenuItemById(item.menuItemId);
-    return total + (menuItem ? menuItem.price * item.quantity : 0);
-  }, 0);
-};

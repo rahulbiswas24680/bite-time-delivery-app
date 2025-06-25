@@ -12,7 +12,7 @@ type ShopWithSlug = ShopDetails & { slug: string };
 
 const OwnerShops = () => {
 
-    const { currentUser } = useAuth();
+    const { currentUser, setCurrentShopId } = useAuth();
     const currentOwnerId = currentUser?.id;
     const [shops, setShops] = React.useState<ShopDetails[]>([]);
     const [showShopSetupModal, setShowShopSetupModal] = React.useState(false);
@@ -56,6 +56,7 @@ const OwnerShops = () => {
 
     const handleShopClick = (shopId: string) => {
         navigate(`/owner/dashboard/${shopId}`);
+        setCurrentShopId(shopId);
     };
 
     const handleAddNewShop = () => {

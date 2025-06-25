@@ -80,7 +80,7 @@ const Orders: React.FC = () => {
                       <OrderCard order={order} />
                       
                       {/* Map for tracking */}
-                      {(order.status === 'confirmed' || order.status === 'preparing' || order.status === 'ready') && (
+                      {/* {(order.status === 'confirmed' || order.status === 'preparing' || order.status === 'ready') && (
                         <div className="bg-white rounded-lg shadow-md overflow-hidden">
                           <div className="p-4 bg-gray-50 border-b">
                             <h3 className="font-semibold">Track Your Order</h3>
@@ -89,7 +89,7 @@ const Orders: React.FC = () => {
                             <Map customerId={currentUser?.id} />
                           </div>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   ))}
                 </div>

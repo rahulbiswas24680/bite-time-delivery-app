@@ -1,10 +1,12 @@
 import { onAuthStateChanged } from 'firebase/auth';
-import { arrayUnion, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { arrayUnion, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { loginUser, logoutUser, signupUser } from '../backend/authService';
 import { auth, db } from '../backend/firebase';
 import { User } from '../utils/types';
-import { slugify } from '@/utils/utils';
+
+import { anonymousLogin } from '../backend/authService';
+import { fetchOwnerShopData, fetchCustomerShopsData } from '../backend/shop';
 
 interface ShopData {
   id: string;
@@ -16,6 +18,7 @@ type AuthContextType = {
   currentUser: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User | null>;
+  anonymousLoginUser: () => Promise<User | null>;
   logout: () => Promise<void>;
   signup: (
     email: string,
@@ -36,69 +39,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 
-const fetchOwnerShopData = async (ownerId: string): Promise<{ id: string | null; slug: string | null }> => {
-  /** use this function only for owner shops */
-  try {
-    const q = query(collection(db, 'shops'), where('ownerId', '==', ownerId));
-    const shopSnapshot = await getDocs(q);
-    if (shopSnapshot.docs.length > 0) {
-      const firstShop = shopSnapshot.docs[0];
-      const shopData = firstShop.data();
-      console.log('Shop Data:', shopData);
-      const shopName = shopData.name || 'shop';
-      const shopSlug = slugify(shopName) || 'default-slug';
 
-      return {
-        id: firstShop.id,
-        slug: shopSlug
-      };
-    }
-    return { id: null, slug: null };
-  } catch (error) {
-    console.error("Error fetching shop ID:", error);
-    return null;
-  }
-};
-
-const fetchCustomerShopsData = async (customerId: string): Promise<{ id: string | null; slug: string | null }> => {
-  try {
-    // 1. Get user document to check linked shops
-    const userRef = doc(db, 'users', customerId);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      return { id: null, slug: null };
-    }
-
-    const userData = userSnap.data();
-    const linkedShops = userData.linkedShops || [];
-
-    // 2. If no linked shops, return null values
-    if (linkedShops.length === 0) {
-      return { id: null, slug: null };
-    }
-
-    // 3. Get the first linked shop's data
-    const shopId = linkedShops[0];
-    const shopDoc = await getDoc(doc(db, 'shops', shopId));
-
-    if (!shopDoc.exists()) {
-      return { id: null, slug: null };
-    }
-
-    const shopData = shopDoc.data();
-    console.log('Shop Data:', shopData, shopId);
-    const shopSlug = slugify(shopData.name) || shopId;
-
-    return {
-      id: shopId,
-      slug: shopSlug
-    };
-  } catch (error) {
-    console.error("Error fetching customer shop data:", error);
-    return { id: null, slug: null };
-  }
-};
 
 // const fetchCustomerLinkedShops = async (customerId: string): Promise<string[]> => {
 //   /** use this function only for customer linked shops */
@@ -182,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: userData.name || user.displayName || '',
           phone: userData.phone || '',
           role: userData.role as ('customer' | 'owner'),
+          isAnonymous: userData.isAnonymous || false,
         };
         setCurrentUser(appUser);
 
@@ -213,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: userData.name,
         phone: userData.phone,
         role: userData.role,
+        isAnonymous: false,
       };
 
       setCurrentUser(newUser);
@@ -244,7 +187,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: user.email || '',
         name: userDocSnap.data().name || '',
         phone: userDocSnap.data().phone || '',
-        role: userDocSnap.data().role as ('customer' | 'owner')
+        role: userDocSnap.data().role as ('customer' | 'owner'),
+        isAnonymous: userDocSnap.data().isAnonymous || false,
       };
       localStorage.setItem('user', JSON.stringify(loggedInUser));
       setCurrentUser(loggedInUser);
@@ -260,6 +204,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
   };
+
+
+  const anonymousLoginUser = async (): Promise<User> => {
+
+    const user = await anonymousLogin();
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userDocRef);
+
+    if (!userSnap.exists()) {
+      // Auto-create a default anonymous user profile in Firestore
+      const anonUser: Omit<User, "id"> = {
+        name: "Guest",
+        email: "",
+        phone: "",
+        role: "customer", // 👈 default
+        isAnonymous: true,
+      };
+      await setDoc(userDocRef, anonUser);
+    }
+
+    const userDoc = (await getDoc(userDocRef)).data()!;
+    const loggedInUser: User = {
+      id: user.uid,
+      email: userDoc.email || "",
+      name: userDoc.name || "Guest",
+      phone: userDoc.phone || "",
+      role: userDoc.role,
+      isAnonymous: true,
+    };
+
+    return loggedInUser;
+  };
+
 
   const logout = async () => {
     try {
@@ -277,6 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentShopSlug,
     loading,
     login,
+    anonymousLoginUser,
     logout,
     signup,
     error,

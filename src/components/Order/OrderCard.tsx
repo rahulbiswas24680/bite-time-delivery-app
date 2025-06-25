@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Order } from '../../utils/types';
+import { MenuItem, Order } from '../../utils/types';
 import { getMenuItemById } from '../../data/menuItems';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,8 +19,23 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
   const navigate = useNavigate();
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const { currentUser, currentShopId, currentShopSlug } = useAuth();
+  const [menuItems, setMenuItems] = useState<Record<string, MenuItem>>({});
 
-  // console.log('order----', order.paymentStatus, order);
+
+  // console.log('order--', order);
+  useEffect(() => {
+    const fetchItems = async () => {
+      const itemsMap: Record<string, MenuItem> = {};
+      for (const item of order.items) {
+        console.log('menuItem--', item.menuItemId);
+        const menuItem = await getMenuItemById(item.menuItemId);
+        if (menuItem) itemsMap[item.menuItemId] = menuItem;
+      }
+      setMenuItems(itemsMap);
+    };
+
+    fetchItems();
+  }, [order.items, currentShopId]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -118,7 +133,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
             <h4 className="text-sm font-medium">Order Items:</h4>
             <ul className="space-y-1">
               {order.items.map((item) => {
-                const menuItem = getMenuItemById(item.menuItemId);
+                const menuItem = menuItems[item.menuItemId];
+                console.log(menuItem, '--?');
                 return (
                   <li key={item.menuItemId} className="flex justify-between text-sm">
                     <span>
@@ -144,35 +160,35 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
         </CardContent>
 
         {showActions && (
-          <CardFooter className="flex flex-col gap-2 sm:flex-row justify-between">
-            <Button
-              variant="outline"
-              onClick={() => setShowDetailsModal(true)}
-              className="flex items-center gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              View Details
-            </Button>
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-              {order.paymentStatus === 'pending' && (
+          <CardFooter className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2 w-full justify-between items-center">
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-2 w-full">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDetailsModal(true)}
+                  className="flex items-center gap-2 w-full sm:w-auto"
+                >
+                  <Eye className="h-4 w-4" />
+                  View Details
+                </Button>
+                <Button
+                  onClick={() => navigate(`/customer/${currentShopSlug}/chat/${order.id}`)}
+                  className="bg-food-orange hover:bg-orange-600 w-full sm:w-auto"
+                >
+                  Chat with Restaurant
+                </Button>
+              </div>
+              {order.paymentStatus === 'pending' && currentUser?.role === 'owner' && (
                 <Button
                   onClick={() => handlePayment()}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                 >
-                  Pay Now
+                  Mark As Paid <span><small>(Used for Cash Payment)</small></span>
                 </Button>
               )}
-              <Button
-                onClick={() => navigate(`/customer/${currentShopSlug}/chat/${order.id}`)}
-                className="bg-food-orange hover:bg-orange-600"
-              >
-                Chat with Restaurant
-              </Button>
             </div>
-          </CardFooter>
-        )}
+          </CardFooter>)}
       </Card>
-
       <OrderDetailsModal
         order={order}
         isOpen={showDetailsModal}

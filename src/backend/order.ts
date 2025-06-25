@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, query, Timestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, DocumentSnapshot, getCountFromServer, getDoc, getDocs, limit, orderBy, query, serverTimestamp, startAfter, Timestamp, updateDoc, where } from "firebase/firestore";
 import { Order } from '../utils/types';
 import { db } from './firebase';
 
@@ -22,10 +22,22 @@ export const getOrderById = async (orderId: string) => {
   return { id: snapshot.id, ...snapshot.data() };
 };
 
+export const deleteOrderById = async (orderId: string): Promise<void> => {
+  const orderRef = doc(db, 'orders', orderId);
+  const orderSnap = await getDoc(orderRef);
 
-export const getOrdersByCustomerId = async (customerId: string, shopId:string) => {
+  if (!orderSnap.exists()) {
+    throw new Error('Order not found');
+  }
+
+  await deleteDoc(orderRef);
+};
+
+
+
+export const getOrdersByCustomerId = async (customerId: string, shopId: string) => {
   const q = query(
-    collection(db, 'orders'), 
+    collection(db, 'orders'),
     where('customerId', '==', customerId),
     where('shopId', '==', shopId)
   );
@@ -38,6 +50,56 @@ export const getOrdersByShopId = async (shopId: string): Promise<Order[]> => {
   const q = query(collection(db, 'orders'), where('shopId', '==', shopId));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Order, 'id'>) }));
+};
+
+
+export const fetchOrdersByStatus = async (
+  status: string,
+  shopId: string,
+  lastDoc: DocumentSnapshot | null = null
+): Promise<{
+  data: Order[];
+  total: number;
+  lastDoc: DocumentSnapshot | null;
+}> => {
+  // Create base query for paginated results
+  let ordersQuery = query(
+    collection(db, 'orders'),
+    where('shopId', '==', shopId),
+    where('status', '==', status),
+    orderBy('createdAt', 'desc'),
+    limit(5)
+  );
+
+  // Add pagination cursor if provided
+  if (lastDoc) {
+    ordersQuery = query(ordersQuery, startAfter(lastDoc));
+  }
+
+  // Create separate query for total count
+  const countQuery = query(
+    collection(db, 'orders'),
+    where('shopId', '==', shopId),
+    where('status', '==', status)
+  );
+
+  // Execute both queries in parallel
+  const [snapshot, countSnap] = await Promise.all([
+    getDocs(ordersQuery),
+    getCountFromServer(countQuery)
+  ]);
+
+  // Transform the documents
+  const data = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...(doc.data() as Omit<Order, 'id'>),
+  }));
+
+  return {
+    data,
+    total: countSnap.data().count,
+    lastDoc: snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1] : null,
+  };
 };
 
 
@@ -78,3 +140,34 @@ export const updateOrderStatusChange = async (
     throw error;
   }
 };
+
+
+
+export const savePaymentToFirestore = async ({
+  razorpayOrderId,
+  razorpayPaymentId,
+  amount,
+  userId,
+  shopId,
+}: {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  amount: number;
+  userId: string;
+  shopId: string;
+}) => {
+  const paymentData = {
+    razorpayOrderId,
+    razorpayPaymentId,
+    shopId,
+    userId,
+    amount,
+    paymentMethod: 'online',
+    status: 'completed',
+    paymentDate: new Date().toISOString(),
+    timestamp: serverTimestamp(),
+  };
+
+  const paymentRef = await addDoc(collection(db, 'paymentCollection'), paymentData);
+  return { id: paymentRef.id, ...paymentData };
+}

@@ -1,5 +1,5 @@
 
-# BiteTime Restaurant Management App
+# Stackorq Restaurant Management App
 
 A food restaurant management application with location tracking, chat functionality, and order management.
 

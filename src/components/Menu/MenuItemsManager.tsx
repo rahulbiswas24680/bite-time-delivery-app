@@ -122,8 +122,7 @@ const MenuItemsManager = () => {
         const itemData: MenuItem = {
             ...currentItem,
             image: imageUrl,
-            shopId: currentShopId!,
-            id: currentItem.id || '', // Ensure id is always string
+            shopId: currentShopId!
         } as MenuItem;
 
         if (currentItem.id) {

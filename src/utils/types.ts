@@ -5,6 +5,7 @@ export interface User {
   email: string;
   phone: string;
   role: 'customer' | 'owner';
+  isAnonymous?: boolean;
   linkedShops?: string[];
 }
 
@@ -45,6 +46,7 @@ export interface Order {
   }[];
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   paymentStatus: 'paid' | 'pending' | 'failed';
+  paymentCollectionId?: string;
   totalAmount: number;
   createdAt: string;
   estimatedPickupTime?: string;
@@ -80,3 +82,29 @@ export interface ShopDetails {
   closingHours?: string;
   menuItems?: MenuItem[];
 }
+
+
+export interface PaymentCollection {
+  id: string;
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  shopId: string;
+  userId: string;
+  amount: number;
+  paymentMethod: 'cash' | 'online';
+  status: 'pending' | 'completed' | 'failed';
+  paymentDate: string;
+  timestamp: any;
+}
+
+
+export interface PaidOutCollection {
+  id: string;
+  shopId: string;
+  amount: number;
+  paymentDate: string;
+  paymentId: string;
+  status: 'pending' | 'completed' | 'failed';
+  timestamp: string;
+}
+

@@ -53,6 +53,32 @@ const Menu: React.FC = () => {
     fetchMenuData();
   }, [currentShopId]);
 
+
+  // Cart management - shop specific
+  useEffect(() => {
+    if (!currentShopId) return;
+    
+    const cartKey = `cart_${currentUser?.id || 'guest'}_${currentShopId}`;
+    const storedCart = localStorage.getItem(cartKey);
+    setCart(storedCart ? JSON.parse(storedCart) : []);
+  }, [currentShopId, currentUser]);
+
+  useEffect(() => {
+    if (!currentShopId) return;
+    
+    const cartKey = `cart_${currentUser?.id || 'guest'}_${currentShopId}`;
+    localStorage.setItem(cartKey, JSON.stringify(cart));
+  }, [cart, currentShopId, currentUser]);
+
+  // Clear cart when component unmounts or before shopId changes
+  useEffect(() => {
+    return () => {
+      setCart([]);
+    };
+  }, [currentShopId]);
+
+
+
   // Filtered menu items based on selected category
   const filteredItems = useMemo(() => {
     return activeCategory
@@ -61,12 +87,12 @@ const Menu: React.FC = () => {
   }, [activeCategory, menuItems]);
 
   // Cart management (unchanged from your original)
-  useEffect(() => {
-    const storedCart = localStorage.getItem(`cart_${currentUser?.id || 'guest'}`);
-    if (storedCart) {
-      setCart(JSON.parse(storedCart));
-    }
-  }, [currentUser]);
+  // useEffect(() => {
+  //   const storedCart = localStorage.getItem(`cart_${currentUser?.id || 'guest'}`);
+  //   if (storedCart) {
+  //     setCart(JSON.parse(storedCart));
+  //   }
+  // }, [currentUser]);
 
   const addToCart = (item: MenuItem) => {
     const existingCartItem = cart.find(cartItem => cartItem.menuItem.id === item.id);
@@ -83,9 +109,9 @@ const Menu: React.FC = () => {
     setShowCart(true);
   };
 
-  useEffect(() => {
-    localStorage.setItem(`cart_${currentUser?.id || 'guest'}`, JSON.stringify(cart));
-  }, [cart, currentUser]);
+  // useEffect(() => {
+  //   localStorage.setItem(`cart_${currentUser?.id || 'guest'}`, JSON.stringify(cart));
+  // }, [cart, currentUser]);
 
   const removeFromCart = (itemId: string) => {
     setCart(cart.filter(item => item.menuItem.id !== itemId));
@@ -120,7 +146,7 @@ const Menu: React.FC = () => {
   // Redirect non-customers
   useEffect(() => {
     if (currentUser && currentUser.role !== 'customer') {
-      navigate('/owner/dashboard');
+      navigate(`/owner/dashboard/${currentShopId}`);
     }
   }, [currentUser, navigate]);
 

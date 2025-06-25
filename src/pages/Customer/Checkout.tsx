@@ -1,29 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { addNewOrder } from '../../data/orders';
-import { getMenuItemById } from '../../data/menuItems';
-import { updateUserAddress, createOrder } from '../../backend/order';
-import Navbar from '../../components/Layout/Navbar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
 import { Separator } from '@/components/ui/separator';
+import axios from 'axios';
 import { Check, CreditCard, MapPin } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { createOrder, savePaymentToFirestore } from '../../backend/order';
+import Navbar from '../../components/Layout/Navbar';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface CheckoutFormValues {
     name: string;
     phone: string;
     address: string;
-    paymentMethod: 'card' | 'cash';
+    paymentMethod: 'Pay Online' | 'Cash On Delivery';
     specialInstructions: string;
 }
 
 const Checkout: React.FC = () => {
-    const { currentUser, currentShopId } = useAuth();
+    const { currentUser, currentShopId, currentShopSlug } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [cartItems, setCartItems] = useState<any[]>([]);
@@ -34,7 +33,7 @@ const Checkout: React.FC = () => {
             name: currentUser?.name || '',
             phone: currentUser?.phone || '',
             address: '',
-            paymentMethod: 'card',
+            paymentMethod: 'Pay Online',
             specialInstructions: '',
         }
     });
@@ -44,7 +43,7 @@ const Checkout: React.FC = () => {
         if (location.state?.cartItems) {
             setCartItems(location.state.cartItems);
         } else {
-            navigate('/customer/menu');
+            navigate(`/customer/${currentShopSlug}/menu`);
         }
     }, [location, navigate]);
 
@@ -56,6 +55,103 @@ const Checkout: React.FC = () => {
     const deliveryFee = 2.99;
     const total = subtotal + tax + deliveryFee;
 
+
+
+    const handlePayment = async ({
+        name,
+        phone,
+        email = "customer@example.com", // fallback email
+        amount,
+    }: {
+        name: string;
+        phone: string;
+        email?: string;
+        amount: number;
+    }): Promise<{ success: boolean; paymentId?: string; paymentDocId?: string }> => {
+        try {
+            // Create order on your server
+            const { data } = await axios.post('https://stackorq-backend.onrender.com/api/payments/create-order', {
+                amount,
+                currency: 'INR',
+                receipt: `receipt-${Date.now()}`
+            });
+
+            return new Promise((resolve) => {
+                const options = {
+                    key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+                    amount: data.amount,
+                    currency: data.currency,
+                    name: 'Stackorq',
+                    description: 'Order Payment',
+                    order_id: data.id,
+                    image: 'https://play-lh.googleusercontent.com/G4i17GWZ1Oj7c9A1d_hUCJD2YTIjFuclxnopouHJOv9lKrS88QJ6zbrucK3nJ76gj6A',
+                    handler: async function (response: any) {
+                        try {
+                            const verifyResponse = await axios.post('https://stackorq-backend.onrender.com/api/payments/verify', {
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_signature: response.razorpay_signature,
+                            });
+
+                            if (verifyResponse.data.success) {
+                                const paymentData = {
+                                    razorpayOrderId: response.razorpay_order_id,
+                                    razorpayPaymentId: response.razorpay_payment_id,
+                                    amount,
+                                    userId: currentUser?.id || 'anonymous',
+                                    shopId: currentShopId,
+                                };
+                                const savedPayment = await savePaymentToFirestore(paymentData);
+                                console.log('Payment saved to Firestore:', savedPayment);
+                                resolve({
+                                    success: true,
+                                    paymentId: response.razorpay_payment_id,
+                                    paymentDocId: savedPayment.id,
+                                });
+                                
+                            } else {
+                                toast.error('Payment verification failed.');
+                                resolve({ success: false });
+                            }
+                        } catch (error) {
+                            console.error('Verification failed:', error);
+                            resolve({ success: false });
+                        }
+                    },
+                    prefill: {
+                        name,
+                        email,
+                        contact: phone,
+                    },
+                    theme: {
+                        color: '#3399cc',
+                    },
+                    method: {
+                        upi: true,
+                        card: true,
+                        netbanking: false,
+                        wallet: false,
+                        emi: false,
+                        paylater: false,
+                        cod: false,
+                    },
+                    modal: {
+                        ondismiss: () => {
+                            toast.info('Payment window closed');
+                            resolve({ success: false });
+                        }
+                    }
+                };
+                const rzp = new (window as any).Razorpay(options);
+                rzp.open();
+            });
+        } catch (error) {
+            console.error('Payment error:', error);
+            return { success: false };
+        }
+    };
+
+
     const onSubmit = async (data: CheckoutFormValues) => {
         if (!currentUser) {
             navigate('/login');
@@ -65,8 +161,19 @@ const Checkout: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            // 1. Update user address in Firestore
-            await updateUserAddress(currentUser.id, data.address);
+            // 1. get the payment done
+            const { success, paymentId, paymentDocId } = await handlePayment({
+                name: data.name,
+                phone: data.phone,
+                email: currentUser.email,
+                amount: total, // Razorpay uses paise
+            });
+
+
+            if (!success || !paymentId) {
+                toast.error('Payment failed. Please try again.');
+                return;
+            }
 
             // 2. Prepare items
             const orderItems = cartItems.map(item => ({
@@ -82,16 +189,18 @@ const Checkout: React.FC = () => {
                 name: data.name,
                 phone: data.phone,
                 address: data.address,
+                paymentCollectionId: paymentDocId,
                 paymentMethod: data.paymentMethod,
                 specialInstructions: data.specialInstructions || '',
                 items: orderItems,
                 status: 'pending',
                 totalAmount: total,
-                paymentStatus: 'pending',
+                paymentStatus: 'paid',
             });
 
             // 4. Clear cart from localStorage
-            localStorage.removeItem('cart');
+            const cartKey = `cart_${currentUser?.id || 'guest'}_${currentShopId}`;
+            localStorage.removeItem(cartKey);
             setCartItems([]);
 
             // 5. Success toast and redirect
@@ -99,8 +208,7 @@ const Checkout: React.FC = () => {
                 description: `Your order #${orderId} has been received.`,
             });
 
-            // Navigate to order confirmation
-            navigate(`/customer/orders`);
+            navigate(`/customer/${currentShopSlug}/menu`);
         } catch (error) {
             console.log(error);
             toast.error('Failed to place order', {
@@ -260,18 +368,18 @@ const Checkout: React.FC = () => {
                                                         <FormLabel>Payment Method</FormLabel>
                                                         <div className="flex gap-4 pt-2">
                                                             <div
-                                                                className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer ${field.value === 'card'
-                                                                        ? 'border-food-orange bg-orange-50'
-                                                                        : 'border-gray-200'
+                                                                className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer ${field.value === 'Pay Online'
+                                                                    ? 'border-food-orange bg-orange-50'
+                                                                    : 'border-gray-200'
                                                                     }`}
-                                                                onClick={() => form.setValue('paymentMethod', 'card')}
+                                                                onClick={() => form.setValue('paymentMethod', 'Pay Online')}
                                                             >
-                                                                {field.value === 'card' && (
+                                                                {field.value === 'Pay Online' && (
                                                                     <Check className="h-4 w-4 text-food-orange" />
                                                                 )}
-                                                                <span>Credit Card</span>
+                                                                <span>Pay Online</span>
                                                             </div>
-                                                            <div
+                                                            {/* <div
                                                                 className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer ${field.value === 'cash'
                                                                         ? 'border-food-orange bg-orange-50'
                                                                         : 'border-gray-200'
@@ -282,7 +390,7 @@ const Checkout: React.FC = () => {
                                                                     <Check className="h-4 w-4 text-food-orange" />
                                                                 )}
                                                                 <span>Cash on Delivery</span>
-                                                            </div>
+                                                            </div> */}
                                                         </div>
                                                         <FormMessage />
                                                     </FormItem>
