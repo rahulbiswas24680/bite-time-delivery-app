@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Download, Settings, TrendingUp, IndianRupee } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { CalendarIcon, Download, Settings, TrendingUp, IndianRupee, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +34,15 @@ interface PayoutSummary {
   thisMonthEarnings: number;
 }
 
+interface PaginationState {
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  nextCursor?: string;
+  previousCursor?: string;
+}
+
 const Payments: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -47,7 +56,18 @@ const Payments: React.FC = () => {
     to: undefined,
   });
 
-  // Mock payment data - in real app, this would come from backend
+  const [pagination, setPagination] = useState<PaginationState>({
+    currentPage: 1,
+    totalPages: 10, // Mock total pages - in real app this would come from Firebase
+    hasNextPage: true,
+    hasPreviousPage: false,
+    nextCursor: 'next_cursor_token',
+    previousCursor: undefined,
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Mock payment data - in real app, this would come from Firebase with cursor pagination
   const [paymentRecords] = useState<PaymentRecord[]>([
     {
       id: 'PAY001',
@@ -109,6 +129,50 @@ const Payments: React.FC = () => {
     return true;
   });
 
+  // Mock function to simulate Firebase cursor pagination
+  const handlePageChange = async (direction: 'next' | 'previous' | number) => {
+    setIsLoading(true);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    if (direction === 'next' && pagination.hasNextPage) {
+      setPagination(prev => ({
+        ...prev,
+        currentPage: prev.currentPage + 1,
+        hasPreviousPage: true,
+        hasNextPage: prev.currentPage + 1 < prev.totalPages,
+        previousCursor: 'prev_cursor_token',
+        nextCursor: prev.currentPage + 1 < prev.totalPages ? 'next_cursor_token' : undefined,
+      }));
+    } else if (direction === 'previous' && pagination.hasPreviousPage) {
+      setPagination(prev => ({
+        ...prev,
+        currentPage: prev.currentPage - 1,
+        hasPreviousPage: prev.currentPage - 1 > 1,
+        hasNextPage: true,
+        previousCursor: prev.currentPage - 1 > 1 ? 'prev_cursor_token' : undefined,
+        nextCursor: 'next_cursor_token',
+      }));
+    } else if (typeof direction === 'number') {
+      setPagination(prev => ({
+        ...prev,
+        currentPage: direction,
+        hasPreviousPage: direction > 1,
+        hasNextPage: direction < prev.totalPages,
+        previousCursor: direction > 1 ? 'prev_cursor_token' : undefined,
+        nextCursor: direction < prev.totalPages ? 'next_cursor_token' : undefined,
+      }));
+    }
+    
+    setIsLoading(false);
+    
+    toast({
+      title: "Page Updated",
+      description: `Showing page ${typeof direction === 'number' ? direction : direction === 'next' ? pagination.currentPage + 1 : pagination.currentPage - 1}`,
+    });
+  };
+
   const exportToExcel = () => {
     const exportData = filteredRecords.map(record => ({
       'Payment ID': record.id,
@@ -145,6 +209,35 @@ const Payments: React.FC = () => {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const renderPaginationNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    const { currentPage, totalPages } = pagination;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <PaginationItem key={i}>
+          <PaginationLink
+            isActive={i === currentPage}
+            onClick={() => handlePageChange(i)}
+            className="cursor-pointer"
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+    
+    return pages;
   };
 
   return (
@@ -231,7 +324,12 @@ const Payments: React.FC = () => {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Payment Records</CardTitle>
+                <div className="flex items-center gap-4">
+                  <CardTitle>Payment Records</CardTitle>
+                  <div className="text-sm text-gray-500">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </div>
+                </div>
                 <div className="flex gap-4 items-center">
                   <div className="flex gap-2">
                     <Popover>
@@ -295,29 +393,67 @@ const Payments: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRecords.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-medium">{record.id}</TableCell>
-                        <TableCell>{record.shopName}</TableCell>
-                        <TableCell>{format(new Date(record.orderDate), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>₹{record.amount.toLocaleString()}</TableCell>
-                        <TableCell>₹{record.commission.toLocaleString()}</TableCell>
-                        <TableCell className="font-medium">₹{record.netAmount.toLocaleString()}</TableCell>
-                        <TableCell>{getStatusBadge(record.status)}</TableCell>
-                        <TableCell>
-                          {record.payoutDate ? format(new Date(record.payoutDate), 'MMM dd, yyyy') : '-'}
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-food-orange"></div>
+                            <span className="ml-2">Loading...</span>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredRecords.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell className="font-medium">{record.id}</TableCell>
+                          <TableCell>{record.shopName}</TableCell>
+                          <TableCell>{format(new Date(record.orderDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>₹{record.amount.toLocaleString()}</TableCell>
+                          <TableCell>₹{record.commission.toLocaleString()}</TableCell>
+                          <TableCell className="font-medium">₹{record.netAmount.toLocaleString()}</TableCell>
+                          <TableCell>{getStatusBadge(record.status)}</TableCell>
+                          <TableCell>
+                            {record.payoutDate ? format(new Date(record.payoutDate), 'MMM dd, yyyy') : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
               
-              {filteredRecords.length === 0 && (
+              {filteredRecords.length === 0 && !isLoading && (
                 <div className="text-center py-8">
                   <p className="text-gray-500">No payment records found for the selected date range.</p>
                 </div>
               )}
+
+              {/* Pagination */}
+              <div className="flex justify-between items-center mt-6">
+                <div className="text-sm text-gray-500">
+                  Showing page {pagination.currentPage} of {pagination.totalPages}
+                </div>
+                
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => handlePageChange('previous')}
+                        className={`cursor-pointer ${!pagination.hasPreviousPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                      />
+                    </PaginationItem>
+                    
+                    {renderPaginationNumbers()}
+                    
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => handlePageChange('next')}
+                        className={`cursor-pointer ${!pagination.hasNextPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
             </CardContent>
           </Card>
         </div>
