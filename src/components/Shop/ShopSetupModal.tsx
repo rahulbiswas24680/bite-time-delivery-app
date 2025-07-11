@@ -15,16 +15,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { set } from 'date-fns';
 
 
 interface ShopSetupModalProps {
   ownerId: string;
   onShopCreated: (shopId: string) => void;
   // If you want a close button that allows skipping (not recommended for forced setup)
-  // onClose?: () => void;
+  onClose?: () => void;
 }
 
-const ShopSetupModal: React.FC<ShopSetupModalProps> = ({ ownerId, onShopCreated }) => {
+const ShopSetupModal: React.FC<ShopSetupModalProps> = ({ ownerId, onShopCreated, onClose }) => {
   const [shopName, setShopName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
@@ -75,8 +76,8 @@ const ShopSetupModal: React.FC<ShopSetupModalProps> = ({ ownerId, onShopCreated 
 
 
   return (
-    <Dialog open={true} onOpenChange={() => { /* Prevent closing */ }}>
-      <DialogContent className="sm:max-w-[500px] rounded-2xl shadow-xl p-6 [&>button]:hidden">
+    <Dialog open={true} onOpenChange={() => onClose?.()}>
+      <DialogContent className={`sm:max-w-[500px] rounded-2xl shadow-xl p-6 ${!onClose ? "[&>button]:hidden" : ""}`}>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary">Setup Your Shop</DialogTitle>
           <DialogDescription className="text-muted-foreground">

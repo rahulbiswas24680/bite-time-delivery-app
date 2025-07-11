@@ -58,13 +58,13 @@ const App = () => (
             
             
             {/* Owner Routes */}
-            <Route path="/owner/dashboard/:shopId" element={<Dashboard />} />
-            <Route path="/owner/menus/:shopId" element={<MenuManagement />} />
-            <Route path="/owner/chat/:shopId" element={<OwnerChat />} />
-            <Route path="/owner/chat/:shopId/:orderId" element={<OwnerChat />} />
-            <Route path="/owner/orders/:shopId" element={<OwnerOrders />} />
+            <Route path="/owner/:shopSlug/dashboard" element={<Dashboard />} />
+            <Route path="/owner/:shopSlug/menus" element={<MenuManagement />} />
+            <Route path="/owner/:shopSlug/chat" element={<OwnerChat />} />
+            <Route path="/owner/:shopSlug/chat/:orderId" element={<OwnerChat />} />
+            <Route path="/owner/:shopSlug/orders" element={<OwnerOrders />} />
             <Route path="/owner/my-shops" element={<OwnerShops />} />
-            <Route path="/owner/:shopId/billing" element={<Billings />} />
+            <Route path="/owner/:shopSlug/billing" element={<Billings />} />
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../../components/Layout/Layout';
 import OrdersList from '../../components/Order/OrdersList';
+import { useAuth } from '@/contexts/AuthContext';
 
 type OrderStatusTab = 'active' | 'history';
 
@@ -37,7 +38,9 @@ const OwnerOrders = () => {
   const [activeTab, setActiveTab] = useState<OrderStatusTab>('active');
   const [error, setError] = useState<string | null>(null);
   
-  const shopId = useParams().shopId!;
+  const { currentShopId, currentShopSlug } = useAuth();
+
+  // const shopId = useParams().shopId!;
   const navigate = useNavigate();
 
   const getStatusesForTab = (tab: OrderStatusTab): string[] => {
@@ -50,7 +53,7 @@ const OwnerOrders = () => {
   useEffect(() => {
     const fetchInitialOrders = async () => {
       try {
-        if (!shopId) {
+        if (!currentShopId) {
           navigate('/not-found');
           return;
         }
@@ -62,7 +65,7 @@ const OwnerOrders = () => {
         let activeLastDoc: DocumentSnapshot | null = null;
         
         for (const status of activeStatuses) {
-          const result = await fetchOrdersByStatus(status, shopId);
+          const result = await fetchOrdersByStatus(status, currentShopId);
           activeOrdersData = [...activeOrdersData, ...result.data];
           activeLastDoc = result.lastDoc;
         }
@@ -78,7 +81,7 @@ const OwnerOrders = () => {
         let historyLastDoc: DocumentSnapshot | null = null;
         
         for (const status of historyStatuses) {
-          const result = await fetchOrdersByStatus(status, shopId);
+          const result = await fetchOrdersByStatus(status, currentShopId);
           historyOrdersData = [...historyOrdersData, ...result.data];
           historyLastDoc = result.lastDoc;
         }
@@ -96,7 +99,7 @@ const OwnerOrders = () => {
     };
 
     fetchInitialOrders();
-  }, [shopId, navigate]);
+  }, [currentShopId, navigate]);
 
   const handleLoadMore = async () => {
     const currentTab = activeTab;
@@ -112,7 +115,7 @@ const OwnerOrders = () => {
       
       // For load more, we'll fetch the next batch for the last status
       const lastStatus = statuses[statuses.length - 1];
-      const result = await fetchOrdersByStatus(lastStatus, shopId, currentLastDoc);
+      const result = await fetchOrdersByStatus(lastStatus, currentShopId, currentLastDoc);
       
       if (currentTab === 'active') {
         setActiveOrders(prev => [...prev, ...result.data]);

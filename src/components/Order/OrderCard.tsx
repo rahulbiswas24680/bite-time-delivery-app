@@ -5,7 +5,7 @@ import { getMenuItemById } from '../../data/menuItems';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye, Loader2 } from 'lucide-react';
 import OrderDetailsModal from './OrderDetailsModal';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,22 +20,41 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const { currentUser, currentShopId, currentShopSlug } = useAuth();
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem>>({});
+  const [loadingMenuItems, setLoadingMenuItems] = useState(true);
 
 
-  // console.log('order--', order);
   useEffect(() => {
     const fetchItems = async () => {
-      const itemsMap: Record<string, MenuItem> = {};
-      for (const item of order.items) {
-        console.log('menuItem--', item.menuItemId);
-        const menuItem = await getMenuItemById(item.menuItemId);
-        if (menuItem) itemsMap[item.menuItemId] = menuItem;
+      try {
+        setLoadingMenuItems(true);
+        const itemsMap: Record<string, MenuItem> = {};
+
+        // Use Promise.all for parallel fetching
+        const promises = order.items.map(async (item) => {
+          try {
+            const menuItem = await getMenuItemById(item.menuItemId);
+            if (menuItem) {
+              itemsMap[item.menuItemId] = menuItem;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch menu item ${item.menuItemId}:`, error);
+          }
+        });
+
+        await Promise.all(promises);
+        console.log('menuItems--', itemsMap);
+        setMenuItems(itemsMap);
+      } catch (error) {
+        console.error('Failed to fetch menu items:', error);
+      } finally {
+        setLoadingMenuItems(false);
       }
-      setMenuItems(itemsMap);
     };
 
     fetchItems();
   }, [order.items, currentShopId]);
+
+  // console.log('menuItem--', menuItems);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -119,7 +138,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Placed on: {formatDate(order.createdAt)}
+            Placed on: {new Date(order.createdAt.seconds * 1000).toLocaleString("en-US")}
           </p>
           {order.estimatedPickupTime && (
             <p className="text-sm text-food-green font-medium">
@@ -131,30 +150,36 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
         <CardContent>
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Order Items:</h4>
-            <ul className="space-y-1">
-              {order.items.map((item) => {
-                const menuItem = menuItems[item.menuItemId];
-                console.log(menuItem, '--?');
-                return (
-                  <li key={item.menuItemId} className="flex justify-between text-sm">
-                    <span>
-                      {item.quantity} x {menuItem?.name || 'Unknown Item'}
-                      {item.specialInstructions && (
-                        <span className="text-xs text-muted-foreground block ml-4">
-                          Note: {item.specialInstructions}
-                        </span>
-                      )}
-                    </span>
-                    <span className="font-medium">
-                      ${((menuItem?.price || 0) * item.quantity).toFixed(2)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            {loadingMenuItems ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="ml-2">Loading items...</span>
+              </div>
+            ) : (
+              <ul className="space-y-1">
+                {order.items.map((item) => {
+                  const menuItem = menuItems[item.menuItemId];
+                  return (
+                    <li key={item.menuItemId} className="flex justify-between text-sm">
+                      <span>
+                        {item.quantity} x {menuItem?.name || 'Unknown Item'}
+                        {item.specialInstructions && (
+                          <span className="text-xs text-muted-foreground block ml-4">
+                            Note: {item.specialInstructions}
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-medium">
+                        ₹{((menuItem?.price || 0) * item.quantity).toFixed(2)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
             <div className="pt-2 border-t flex justify-between font-bold">
               <span>Total:</span>
-              <span className="text-food-orange">${order.totalAmount.toFixed(2)}</span>
+              <span className="text-food-orange">₹{order.totalAmount.toFixed(2)}</span>
             </div>
           </div>
         </CardContent>

@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { DocumentSnapshot } from 'firebase/firestore';
-import { CheckCircle, CreditCard, Loader2, Menu, MoreVertical, RefreshCw, Trash2, XCircle } from 'lucide-react';
+import { CheckCircle, CreditCard, Loader2, Menu, MessageCircle, MoreVertical, RefreshCw, RotateCcw, Trash2, XCircle } from 'lucide-react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -21,8 +21,12 @@ import { MenuItem, Order, User } from '../../utils/types';
 
 type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready';
 
+
+// generate random otp for customers orders
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
 const Dashboard: React.FC = () => {
-  const { currentUser, currentShopId } = useAuth();
+  const { currentUser, currentShopId, currentShopSlug } = useAuth();
 
 
   const [loading, setLoading] = React.useState(false);
@@ -110,6 +114,7 @@ const Dashboard: React.FC = () => {
 
 
 
+
   // Get all pending orders
   const pendingOrders = getPendingOrders(orders);
 
@@ -182,16 +187,16 @@ const Dashboard: React.FC = () => {
       <Navbar />
 
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
+        <div className="flex flex-row justify-between items-center mb-6 gap-4 flex-wrap">
           <h1 className="text-3xl font-bold">Restaurant Dashboard</h1>
 
-          <div className="flex gap-2 w-full sm:w-auto">
+          <div className="flex gap-2 flex-wrap">
             <Button
-              className="w-full sm:w-auto bg-orange-500 hover:bg-orange-700 text-white"
+              className="bg-orange-500 hover:bg-orange-700 text-white"
               onClick={() => console.log('Withdraw Cash button clicked')}
             >
               <CreditCard className="w-4 h-4 mr-2" />
-              Manage Payments
+              Manage Cash
 
               <span className="absolute -top-1 -right-2 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-500 opacity-75"></span>
@@ -199,16 +204,15 @@ const Dashboard: React.FC = () => {
               </span>
             </Button>
             <Button
-              className="w-full sm:w-auto bg-slate-400 hover:bg-slate-600 text-white"
-              onClick={() => navigate(`/owner/menus/${currentShopId}`)}
+              className="bg-slate-400 hover:bg-slate-600 text-white"
+              onClick={() => navigate(`/owner/${currentShopSlug}/menus`)}
             >
               <Menu className="w-4 h-4 mr-2" />
-              Manage Menus
+              Menu
             </Button>
             <Button
               onClick={() => setPendingOrders([...getPendingOrders(orders)])}
               variant="outline"
-              className="w-full sm:w-auto"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
@@ -306,7 +310,7 @@ const Dashboard: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/owner/chat/${order.id}`)}
+                        onClick={() => navigate(`/owner/${currentShopSlug}/chat/${order.id}`)}
                       >
                         Chat with Customer
                       </Button>
@@ -432,7 +436,7 @@ const Dashboard: React.FC = () => {
                       <CardFooter className="bg-gray-50 flex justify-between items-center">
                         <Button
                           variant="outline"
-                          onClick={() => navigate(`/owner/chat/${order.id}`)}
+                          onClick={() => navigate(`/owner/${currentShopSlug}/chat/${order.id}`)}
                         >
                           Chat
                         </Button>
@@ -527,7 +531,7 @@ const Dashboard: React.FC = () => {
                     <CardFooter className="bg-gray-50 flex justify-between">
                       <Button
                         variant="outline"
-                        onClick={() => navigate(`/owner/chat/${order.id}`)}
+                        onClick={() => navigate(`/owner/${currentShopSlug}/chat/${order.id}`)}
                       >
                         Chat
                       </Button>
@@ -591,19 +595,12 @@ const Dashboard: React.FC = () => {
                           })}
                         </ul>
                       </CardContent>
-                      <CardFooter className="bg-gray-50 flex justify-between">
-                        <Button
-                          variant="outline"
-                          onClick={() => navigate(`/owner/chat/${order.id}`)}
-                        >
-                          Chat
-                        </Button>
-                        <Button
-                          onClick={() => handleUpdateStatus(order.id, 'completed', currentShopId)}
-                        >
-                          Complete Order
-                        </Button>
-                      </CardFooter>
+                          <FinalOrderSubmitFooter 
+                          order={order}
+                          currentShopId={currentShopId}
+                          currentShopSlug={currentShopSlug}
+                          handleUpdateStatus={handleUpdateStatus}
+                          />
                     </Card>
                   )
                 })}
@@ -623,5 +620,90 @@ const Dashboard: React.FC = () => {
     </div>
   );
 };
+
+
+
+const FinalOrderSubmitFooter = ({ order, handleUpdateStatus, currentShopId, currentShopSlug }) => {
+  // for order verification purpose
+  const [otp, setOtp] = React.useState(generateOTP());
+  const [timeLeft, setTimeLeft] = React.useState(60); // in seconds
+  const [copied, setCopied] = React.useState(false);
+
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    setCopied(false);
+    setTimeLeft(60);
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev === 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otp]);
+
+  // Handle copy otp
+  const handleCopy = () => {
+    navigator.clipboard.writeText(otp);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1000);
+  };
+  // regenrerate otp
+  const handleRegenerate = () => {
+    setOtp(generateOTP());
+  };
+
+  return (
+    <CardFooter className="bg-gray-50 flex flex-col sm:flex-row justify-between gap-4 pt-4">
+
+      {/* OTP Section */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <div className="text-2xl font-mono tracking-widest text-blue-700">{otp}</div>
+          <button
+            onClick={handleCopy}
+            className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-gray-600">
+            Expires in:{" "}
+            <span className="font-semibold text-red-500">
+              {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+            </span>
+          </div>
+          <button
+            onClick={handleRegenerate}
+            className="text-xs text-gray-500 hover:text-gray-700"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <Button
+        variant="outline"
+        onClick={() => navigate(`/owner/${currentShopSlug}/chat/${order.id}`)}
+        className="w-full sm:w-auto"
+      >
+        <MessageCircle className="w-4 h-4 mr-1" />Chat
+      </Button>
+
+      <Button
+        onClick={() => handleUpdateStatus(order.id, 'completed', currentShopId)}
+        className="w-full sm:w-auto"
+      >
+        Complete Order
+      </Button>
+    </CardFooter>
+  )
+}
 
 export default Dashboard;

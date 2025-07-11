@@ -95,3 +95,17 @@ export const fetchCustomerShopsData = async (customerId: string): Promise<{ id: 
     return { id: null, slug: null };
   }
 };
+
+export const getShopOwnerId = async (shopId: string): Promise<string | null> => {
+  try {
+    const shopDoc = await getDoc(doc(db, 'shops', shopId));
+    if (!shopDoc.exists()) {
+      throw new Error('Shop not found');
+    }
+    const shopData = shopDoc.data();
+    return shopData.ownerId;
+  } catch (error) {
+    console.error("Error fetching shop owner ID:", error);
+    return null;
+  }
+};

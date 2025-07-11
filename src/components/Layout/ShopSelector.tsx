@@ -16,7 +16,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 type ShopWithSlug = ShopDetails & { slug: string };
 
-const ShopSelector: React.FC = () => {
+const ShopSelector: React.FC<{ disableShops?: boolean }> = ({ disableShops }) => {
   const {
     currentUser,
     currentShopId,
@@ -108,6 +108,7 @@ const ShopSelector: React.FC = () => {
       <Select
         value={currentShop?.id || ''}
         onValueChange={handleShopChange}
+        disabled={disableShops}
       >
         <SelectTrigger className="w-40 md:w-48 bg-white border-gray-300">
           <SelectValue placeholder="Select shop" />

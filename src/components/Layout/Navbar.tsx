@@ -16,7 +16,7 @@ import { Menu, User } from 'lucide-react';
 import ShopSelector from './ShopSelector';
 
 
-const Navbar: React.FC<{ hideShops?: boolean }> = ({ hideShops }) => {  
+const Navbar: React.FC<{ hideShops?: boolean, disableShops?: boolean }> = ({ hideShops, disableShops }) => {  
   const { currentUser, logout, currentShopId, currentShopSlug } = useAuth();
   console.log('currentShopId:', currentShopId);
   const navigate = useNavigate();
@@ -42,8 +42,7 @@ const Navbar: React.FC<{ hideShops?: boolean }> = ({ hideShops }) => {
             {/* Show shop selector for customers */}
             {currentUser?.role === 'customer' && !hideShops && (
               <div className="hidden sm:block">
-
-                <ShopSelector />
+                <ShopSelector disableShops={disableShops} />
               </div>
             )}
           </div>
@@ -98,19 +97,19 @@ const Navbar: React.FC<{ hideShops?: boolean }> = ({ hideShops }) => {
             {currentUser?.role === 'owner' && (
               <>
                 <Link
-                  to={`/owner/dashboard/${currentShopId}`}
+                  to={`/owner/${currentShopSlug}/dashboard`}
                   className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
                 >
                   Dashboard
                 </Link>
                 <Link
-                  to={`/owner/orders/${currentShopId}`}
+                  to={`/owner/${currentShopSlug}/orders`}
                   className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
                 >
                   Orders
                 </Link>
                 <Link
-                  to={`/owner/chat/${currentShopId}`}
+                  to={`/owner/${currentShopSlug}/chat`}
                   className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-food-orange"
                 >
                   Chat
@@ -220,25 +219,28 @@ const Navbar: React.FC<{ hideShops?: boolean }> = ({ hideShops }) => {
                   ) : currentUser.role === 'customer' ? (
                     <>
                       <DropdownMenuItem asChild>
-                        <Link to="/customer/downtown-pizza/menu">Menu</Link>
+                        <Link to={`/customer/${currentShopSlug}/menu`}>Menu</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/customer/orders">My Orders</Link>
+                        <Link to={`/customer/${currentShopSlug}/orders`}>My Orders</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/customer/chat">Chat</Link>
+                        <Link to={`/customer/${currentShopSlug}/chat`}>Chat</Link>
                       </DropdownMenuItem>
                     </>
                   ) : (
                     <>
                       <DropdownMenuItem asChild>
-                        <Link to="/owner/dashboard">Dashboard</Link>
+                        <Link to={`/owner/${currentShopSlug}/dashboard`}>Dashboard</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/owner/orders">Orders</Link>
+                        <Link to={`/owner/${currentShopSlug}/orders`}>Orders</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/owner/chat">Chat</Link>
+                        <Link to={`/owner/${currentShopSlug}/chat`}>Chat</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={`/owner/${currentShopSlug}/billing`}>Billing</Link>
                       </DropdownMenuItem>
                     </>
                   )}

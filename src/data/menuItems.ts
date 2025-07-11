@@ -11,15 +11,11 @@ import { db } from '@/backend/firebase';
  */
 export const getMenuItemById = async (itemId: string): Promise<MenuItem | undefined> => {
   try {
-    const q = query(
-      collection(db, "menuItems"),
-      where("id", "==", itemId)
-    );
-    const querySnapshot = await getDocs(q);
+    const docRef = doc(db, "menuItems", itemId);
+    const docSnap = await getDoc(docRef);
 
-    if (querySnapshot.empty) return undefined;
-    // console.log(querySnapshot.docs[0].data(), '==');
-    return querySnapshot.docs[0].data() as MenuItem;
+    if (!docSnap.exists()) return undefined;
+    return { id: docSnap.id, ...docSnap.data() } as MenuItem;
   } catch (error) {
     console.error("Error fetching menu item:", error);
     return undefined;

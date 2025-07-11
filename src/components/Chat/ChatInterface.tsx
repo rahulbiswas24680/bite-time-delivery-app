@@ -11,6 +11,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { get } from 'http';
+import { getShopOwnerId } from '@/backend/shop';
 
 interface ChatInterfaceProps {
   orderId: string;
@@ -21,6 +23,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [order, setOrder] = useState<any | null>(null);
+  const [chatPartnerId, setChatPartnerId] = useState<string | null>(null);
+  const [chatPartner, setChatPartner] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +34,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
       if (!currentUser) return;
       try {
         const foundOrder = await getOrderById(orderId);
+        console.log('Fetched order:', foundOrder);
         setOrder(foundOrder || null);
+        
+        // Determine chat partner
+        const partnerId = currentUser?.role === 'customer' 
+          ? await getShopOwnerId(order?.shopId) 
+          : order?.customerId || null;
+        
+        setChatPartnerId(partnerId);
+        
+        // Find partner user details
+        const partner = users.find(user => user.id === partnerId);
+        setChatPartner(partner || null);
+        console.log('Chat Partner:', partnerId);
+
+
       } catch (error) {
         console.error('Failed to fetch order:', error);
         setOrder(null);
@@ -40,11 +59,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
     loadOrder();
   }, [currentUser, orderId]);
 
-  // Determine the chat partner based on current user
-  const chatPartnerId =
-    currentUser?.role === 'customer' ? order?.shopOwnerId : order?.customerId || '';
-
-  const chatPartner = users.find(user => user.id === chatPartnerId);
 
   useEffect(() => {
     if (!orderId) return;
@@ -121,7 +135,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
                 order.status === 'preparing' ? 'default' :
                   order.status === 'ready' ? 'default' : 'outline'
           }>
-            {order.status}
+            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
           </Badge>
         </div>
       </CardHeader>

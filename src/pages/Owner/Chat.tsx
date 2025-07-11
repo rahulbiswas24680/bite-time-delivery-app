@@ -12,15 +12,14 @@ import { Order } from '../../utils/types';
 const OwnerChat: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [orders, setOrders] = React.useState<Order[]>([]);
-  const shopId = useParams().shopId!;
-  const { currentUser, currentShopId } = useAuth();
+  const { currentUser, currentShopId, currentShopSlug } = useAuth();
   const navigate = useNavigate();
   
   // Redirect if not logged in or not an owner
   React.useEffect(() => {
     if (!currentUser) {
       navigate('/login');
-    } else if (!shopId) {
+    } else if (!currentShopId) {
       navigate('/not-found');
     } else if (currentUser.role !== 'owner') {
       navigate('/customer/menu');
@@ -53,7 +52,7 @@ const OwnerChat: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6 text-center">
               <p className="text-gray-600">No active orders to chat about.</p>
               <button
-                onClick={() => navigate(`/owner/dashboard/${shopId}`)}
+                onClick={() => navigate(`/owner/dash/${currentShopSlug}board`)}
                 className="mt-4 bg-food-orange hover:bg-orange-600 text-white font-medium py-2 px-4 rounded"
               >
                 Back to Dashboard
@@ -65,7 +64,7 @@ const OwnerChat: React.FC = () => {
                 <Card 
                   key={order.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => navigate(`/owner/chat/${shopId}/${order.id}`)}
+                  onClick={() => navigate(`/owner/${currentShopSlug}/chat/${order.id}`)}
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Order #{order.id}</CardTitle>
@@ -105,7 +104,7 @@ const OwnerChat: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md p-6 text-center">
             <p className="text-red-500">Order not found.</p>
             <button
-              onClick={() => navigate(`/owner/chat/${shopId}`)}
+              onClick={() => navigate(`/owner/${currentShopSlug}/chat`)}
               className="mt-4 bg-food-orange hover:bg-orange-600 text-white font-medium py-2 px-4 rounded"
             >
               Back to Conversations
@@ -122,7 +121,7 @@ const OwnerChat: React.FC = () => {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex items-center mb-6">
           <button
-            onClick={() => navigate(`/owner/chat/${shopId}`)}
+            onClick={() => navigate(`/owner/${currentShopSlug}/chat`)}
             className="text-food-orange hover:underline mr-4"
           >
             ← All Conversations

@@ -257,7 +257,7 @@ const Checkout: React.FC = () => {
                                                             )}
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="font-medium">${(item.menuItem.price * item.quantity).toFixed(2)}</p>
+                                                            <p className="font-medium">₹{(item.menuItem.price * item.quantity).toFixed(2)}</p>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -269,20 +269,20 @@ const Checkout: React.FC = () => {
                                             <div className="space-y-2">
                                                 <div className="flex justify-between">
                                                     <span>Subtotal</span>
-                                                    <span>${subtotal.toFixed(2)}</span>
+                                                    <span>₹{subtotal.toFixed(2)}</span>
                                                 </div>
                                                 <div className="flex justify-between">
                                                     <span>Tax (8%)</span>
-                                                    <span>${tax.toFixed(2)}</span>
+                                                    <span>₹{tax.toFixed(2)}</span>
                                                 </div>
                                                 <div className="flex justify-between">
                                                     <span>Delivery Fee</span>
-                                                    <span>${deliveryFee.toFixed(2)}</span>
+                                                    <span>₹{deliveryFee.toFixed(2)}</span>
                                                 </div>
                                                 <Separator />
                                                 <div className="flex justify-between font-bold text-lg text-food-orange">
                                                     <span>Total</span>
-                                                    <span>${total.toFixed(2)}</span>
+                                                    <span>₹{total.toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </div>
