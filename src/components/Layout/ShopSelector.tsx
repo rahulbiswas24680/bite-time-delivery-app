@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShopDetails } from '@/utils/types';
-import { slugify } from '@/utils/utils';
+import { slugify } from '@/utils/helper';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';

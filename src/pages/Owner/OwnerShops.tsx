@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 type ShopWithSlug = ShopDetails & { slug: string; id: string };
 
 const OwnerShops = () => {
-    const { currentUser, setCurrentShopId } = useAuth();
+    const { currentUser, setCurrentShopId, setCurrentShopSlug } = useAuth();
     const currentOwnerId = currentUser?.id;
     const [shops, setShops] = useState<ShopWithSlug[]>([]);
     const [showShopSetupModal, setShowShopSetupModal] = useState(false);
@@ -54,6 +54,9 @@ const OwnerShops = () => {
 
     const handleShopClick = (shopId: string, shopSlug: string) => {
         setCurrentShopId(shopId);
+        setCurrentShopSlug(shopSlug);
+        localStorage.setItem('currentShopId', shopId);
+        localStorage.setItem('currentShopSlug', shopSlug);
         navigate(`/owner/${shopSlug}/dashboard`);
     };
 

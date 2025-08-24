@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { createOrder, savePaymentToFirestore } from '../../backend/order';
 import Navbar from '../../components/Layout/Navbar';
 import { useAuth } from '../../contexts/AuthContext';
+import { Checkbox } from '@radix-ui/react-checkbox';
 
 interface CheckoutFormValues {
     name: string;
@@ -309,7 +310,7 @@ const Checkout: React.FC = () => {
                                                 name="name"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Name</FormLabel>
+                                                        <FormLabel>Name *</FormLabel>
                                                         <FormControl>
                                                             <Input placeholder="Your name" {...field} />
                                                         </FormControl>
@@ -323,7 +324,7 @@ const Checkout: React.FC = () => {
                                                 name="phone"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Phone Number</FormLabel>
+                                                        <FormLabel>Phone Number *</FormLabel>
                                                         <FormControl>
                                                             <Input placeholder="Your phone number" {...field} />
                                                         </FormControl>
@@ -337,9 +338,9 @@ const Checkout: React.FC = () => {
                                                 name="address"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Delivery Address</FormLabel>
+                                                        <FormLabel>Address *</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Your delivery address" {...field} />
+                                                            <Input placeholder="Your address" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -365,7 +366,7 @@ const Checkout: React.FC = () => {
                                                 name="paymentMethod"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Payment Method</FormLabel>
+                                                        <FormLabel>Payment Method *</FormLabel>
                                                         <div className="flex gap-4 pt-2">
                                                             <div
                                                                 className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer ${field.value === 'Pay Online'
@@ -400,7 +401,7 @@ const Checkout: React.FC = () => {
                                             <Button
                                                 type="submit"
                                                 className="w-full bg-food-orange hover:bg-orange-600 mt-4"
-                                                disabled={isSubmitting || cartItems.length === 0}
+                                                disabled={isSubmitting || cartItems.length === 0 || !form.watch('name') || !form.watch('phone') || !form.watch('address') || !form.watch('paymentMethod')}
                                             >
                                                 {isSubmitting ? 'Processing...' : 'Place Order'}
                                             </Button>

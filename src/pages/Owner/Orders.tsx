@@ -12,6 +12,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../../components/Layout/Layout';
 import OrdersList from '../../components/Order/OrdersList';
 import { useAuth } from '@/contexts/AuthContext';
+import { ref } from 'firebase/database';
+import { CreateOrderModal } from './CreateOrderModal';
+import Navbar from '@/components/Layout/Navbar';
 
 type OrderStatusTab = 'active' | 'history';
 
@@ -37,15 +40,18 @@ const OwnerOrders = () => {
   }>({ active: null, history: null });
   const [activeTab, setActiveTab] = useState<OrderStatusTab>('active');
   const [error, setError] = useState<string | null>(null);
-  
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
+  const [orderCreateModal, setOrderCreateModal] = useState(false);
+
   const { currentShopId, currentShopSlug } = useAuth();
 
   // const shopId = useParams().shopId!;
   const navigate = useNavigate();
 
   const getStatusesForTab = (tab: OrderStatusTab): string[] => {
-    return tab === 'active' 
-      ? ['pending', 'confirmed', 'preparing'] 
+    return tab === 'active'
+      ? ['pending', 'confirmed', 'preparing']
       : ['completed', 'cancelled'];
   };
 
@@ -54,75 +60,89 @@ const OwnerOrders = () => {
     const fetchInitialOrders = async () => {
       try {
         if (!currentShopId) {
-          navigate('/not-found');
+          navigate('/owner/my-shops');
           return;
         }
-        
+
         // Fetch active orders
         setLoading(prev => ({ ...prev, active: true }));
         const activeStatuses = getStatusesForTab('active');
         let activeOrdersData: Order[] = [];
         let activeLastDoc: DocumentSnapshot | null = null;
-        
+
         for (const status of activeStatuses) {
-          const result = await fetchOrdersByStatus(status, currentShopId);
+          const result = await fetchOrdersByStatus(status, currentShopId, undefined, 'all');
+          console.log('result', result);
           activeOrdersData = [...activeOrdersData, ...result.data];
           activeLastDoc = result.lastDoc;
         }
-        
+
         setActiveOrders(activeOrdersData);
         setLastDoc(prev => ({ ...prev, active: activeLastDoc }));
         setHasMore(prev => ({ ...prev, active: activeOrdersData.length > 0 }));
-        
+
         // Fetch history orders
         setLoading(prev => ({ ...prev, history: true }));
         const historyStatuses = getStatusesForTab('history');
         let historyOrdersData: Order[] = [];
         let historyLastDoc: DocumentSnapshot | null = null;
-        
+
         for (const status of historyStatuses) {
-          const result = await fetchOrdersByStatus(status, currentShopId);
+          const result = await fetchOrdersByStatus(status, currentShopId, undefined, 'all');
           historyOrdersData = [...historyOrdersData, ...result.data];
           historyLastDoc = result.lastDoc;
         }
-        
+
         setHistoryOrders(historyOrdersData);
         setLastDoc(prev => ({ ...prev, history: historyLastDoc }));
         setHasMore(prev => ({ ...prev, history: historyOrdersData.length > 0 }));
-        
+
       } catch (err) {
         console.error('Error fetching orders:', err);
         setError('Failed to load orders. Please try again.');
       } finally {
         setLoading({ active: false, history: false });
+        setIsRefreshing(false);
       }
     };
 
     fetchInitialOrders();
-  }, [currentShopId, navigate]);
+  }, [currentShopId, navigate, refreshTrigger]);
+
+  const refreshOrders = async () => {
+    if (isRefreshing) return;
+
+    setIsRefreshing(true);
+    setLoading({
+      active: true,
+      history: true
+    });
+    setRefreshTrigger(prev => !prev);
+  };
+
 
   const handleLoadMore = async () => {
     const currentTab = activeTab;
-    
+
     try {
       setLoadingMore(prev => ({ ...prev, [currentTab]: true }));
       setError(null);
-      
+
       const statuses = getStatusesForTab(currentTab);
       const currentLastDoc = lastDoc[currentTab];
-      
+
       if (!currentLastDoc) return;
-      
+
       // For load more, we'll fetch the next batch for the last status
       const lastStatus = statuses[statuses.length - 1];
-      const result = await fetchOrdersByStatus(lastStatus, currentShopId, currentLastDoc);
-      
+      const result = await fetchOrdersByStatus(lastStatus, currentShopId, currentLastDoc, 'all');
+
       if (currentTab === 'active') {
         setActiveOrders(prev => [...prev, ...result.data]);
       } else {
         setHistoryOrders(prev => [...prev, ...result.data]);
       }
-      
+
       setLastDoc(prev => ({ ...prev, [currentTab]: result.lastDoc }));
       setHasMore(prev => ({ ...prev, [currentTab]: result.data.length > 0 }));
     } catch (err) {
@@ -134,16 +154,36 @@ const OwnerOrders = () => {
   };
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Order Management</h1>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
 
-        <Tabs 
-          defaultValue="active" 
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+          <h1 className="text-2xl font-bold mb-6">Order Management</h1>
+          
+          {/* Create Order Button */}
+          <Button onClick={() => setOrderCreateModal(true)}>
+            + Create New Order
+          </Button>
+          {orderCreateModal && currentShopId && (
+          <CreateOrderModal
+            shopId={currentShopId}
+            open={orderCreateModal}
+            onOpenChange={setOrderCreateModal}
+            onOrderCreated={() => {
+              // Refresh orders list or perform other actions
+            }}
+          />
+        )}
+        </div>
+
+        <Tabs
+          defaultValue="active"
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as OrderStatusTab)}
           className="w-full space-y-4"
         >
+
           <TabsList className="grid w-full grid-cols-2 max-w-xs rounded-lg bg-muted p-1 space-x-1">
             <TabsTrigger value="active" className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-background hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground">
               Active Orders
@@ -178,6 +218,7 @@ const OwnerOrders = () => {
                     <OrdersList
                       orders={activeOrders}
                       showActions={true}
+                      refreshOrders={refreshOrders}
                     />
                     {hasMore.active && activeOrders.length > 0 && (
                       <div className="flex justify-center mt-4">
@@ -247,8 +288,11 @@ const OwnerOrders = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </Layout>
+
+
+        
+      </main>
+    </div>
   );
 };
 

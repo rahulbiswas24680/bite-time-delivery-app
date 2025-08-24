@@ -72,3 +72,9 @@ export const addLinkedShopToUser = async (
 
   return existingShops;
 };
+
+export const getUserById = async (userId: string) => {
+  const docRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(docRef);
+  return userSnap.exists() ? { id: userSnap.id, ...userSnap.data() } : null;
+};

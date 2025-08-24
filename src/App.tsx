@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import Billings from "./pages/Owner/Billings";
 import MenuManagement from "./pages/Owner/MenuManagement";
 import AnonymousRegister from "./pages/Customer/AnonymousRegister";
+import TestUpload from "./pages/Owner/UploadData";
 
 const queryClient = new QueryClient();
 
@@ -65,7 +66,10 @@ const App = () => (
             <Route path="/owner/:shopSlug/orders" element={<OwnerOrders />} />
             <Route path="/owner/my-shops" element={<OwnerShops />} />
             <Route path="/owner/:shopSlug/billing" element={<Billings />} />
-            
+            {
+              import.meta.env.VITE_DEV_SERVER ?
+              <Route path="/owner/test-upload" element={<TestUpload />} /> : null
+            }
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>

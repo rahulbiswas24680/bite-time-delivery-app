@@ -1,7 +1,7 @@
-import { collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, count, query, where, getDocs, getCountFromServer, getAggregateFromServer } from 'firebase/firestore';
 import { ShopDetails } from '@/utils/types';
 import { db } from './firebase';
-import { slugify } from '@/utils/utils';
+import { slugify } from '@/utils/helper';
 
 async function createShopForOwner(ownerUserId: string, shopData: Omit<ShopDetails, 'id' | 'ownerId'>) {
   try {
@@ -108,4 +108,18 @@ export const getShopOwnerId = async (shopId: string): Promise<string | null> => 
     console.error("Error fetching shop owner ID:", error);
     return null;
   }
+};
+
+
+export const getUserShopCount = async (userId: string): Promise<number> => {
+  const q = query(
+    collection(db, 'shops'),
+    where('ownerId', '==', userId)
+  );
+
+  const snapshot = await getAggregateFromServer(q, {
+    shopCount: count()  // <-- alias
+  });
+
+  return snapshot.data().shopCount;  // <-- Access by alias
 };

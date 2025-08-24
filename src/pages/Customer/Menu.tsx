@@ -10,6 +10,8 @@ import MenuCard from '../../components/Menu/MenuCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMenuCategories, getAllMenuItems } from '../../data/menuItems';
 import { MenuItem } from '../../utils/types';
+import { AlertCircleIcon } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface CartItem {
   menuItem: MenuItem;
@@ -24,40 +26,48 @@ const Menu: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showCart, setShowCart] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
+  const [status, setStatus] = useState<'checking' | 'loading' | 'ready' | 'error' | 'no-shop'>('checking');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Fetch menu data
   useEffect(() => {
     const fetchMenuData = async () => {
-      if (!currentShopId) return;
+      if (!currentShopId) {
+        setStatus('no-shop');
+        return;
+      }
+
+      setStatus('loading');
 
       try {
-        setIsLoading(true);
         const [items, cats] = await Promise.all([
           getAllMenuItems(currentShopId),
           getMenuCategories(currentShopId)
         ]);
         setMenuItems(items);
         setCategories(cats);
-        setError(null);
+        setStatus('ready');
       } catch (err) {
-        setError("Failed to load menu data");
+        setErrorMessage("Failed to load menu data");
+        setStatus('error');
         console.error("Error fetching menu:", err);
-      } finally {
-        setIsLoading(false);
       }
     };
 
+    // Initial load
     fetchMenuData();
+
+    return () => {
+      setStatus('checking');
+    };
   }, [currentShopId]);
 
 
   // Cart management - shop specific
   useEffect(() => {
     if (!currentShopId) return;
-    
+
     const cartKey = `cart_${currentUser?.id || 'guest'}_${currentShopId}`;
     const storedCart = localStorage.getItem(cartKey);
     setCart(storedCart ? JSON.parse(storedCart) : []);
@@ -65,7 +75,7 @@ const Menu: React.FC = () => {
 
   useEffect(() => {
     if (!currentShopId) return;
-    
+
     const cartKey = `cart_${currentUser?.id || 'guest'}_${currentShopId}`;
     localStorage.setItem(cartKey, JSON.stringify(cart));
   }, [cart, currentShopId, currentUser]);
@@ -146,28 +156,87 @@ const Menu: React.FC = () => {
   // Redirect non-customers
   useEffect(() => {
     if (currentUser && currentUser.role !== 'customer') {
-      navigate(`/owner/dashboard/${currentShopId}`);
+      navigate(`/owner/${currentShopId}/dashboard`);
     }
   }, [currentUser, navigate]);
 
-  if (!currentShopId) {
-    return <div className="p-4 text-center">No shop selected</div>;
-  }
+  const FullPageSpinner = () => (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+    </div>
+  );
 
-  if (isLoading) {
-    return <div className="p-4 text-center">Loading menu...</div>;
-  }
+  const MenuSkeleton = () => (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-1/4">
+          <h2 className="text-xl font-bold mb-4">Categories</h2>
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-8 w-full bg-gray-200 animate-pulse p-2 rounded"></div>
+            ))}
+          </div>
+        </div>
+        <div className="w-full md:w-3/4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="border rounded-lg p-4">
+              <div className="h-40 bg-gray-200 mb-3 animate-pulse"></div>
+              <div className="h-6 w-3/4 mb-2 bg-gray-200 animate-pulse"></div>
+              <div className="h-4 w-1/2 mb-2 bg-gray-200 animate-pulse"></div>
+              <div className="h-10 w-full bg-gray-200 animate-pulse rounded"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
-  if (error) {
-    return <div className="p-4 text-center text-red-500">{error}</div>;
-  }
+  const ErrorDisplay = ({ message, onRetry }: { message: string, onRetry: () => void }) => (
+    <div className="text-center">
+      <div className="text-red-500 text-xl mb-4">{message}</div>
+      <button
+        onClick={onRetry}
+        className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
+      >
+        Retry
+      </button>
+    </div>
+  );
 
 
   return (
     <>
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        {currentShopId ?
+
+
+        {status === 'checking' && <FullPageSpinner />}
+      
+        {status === 'loading' && (
+          <main className="flex-1">
+            <MenuSkeleton />
+          </main>
+        )}
+        
+        {status === 'no-shop' && (
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-4">No Shop Selected</h2>
+              <Button onClick={() => navigate('/')}>Browse Shops</Button>
+            </div>
+          </main>
+        )}
+        
+        {status === 'error' && (
+          <main className="flex-1 flex items-center justify-center">
+            <ErrorDisplay 
+              message={errorMessage} 
+              onRetry={() => window.location.reload()} 
+            />
+          </main>
+        )}
+        
+        {status === 'ready' && currentShopId ?
           (
             <main className="flex-1 container mx-auto px-4 py-8">
               <div className="flex flex-col md:flex-row gap-8">

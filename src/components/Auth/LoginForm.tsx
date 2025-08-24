@@ -1,4 +1,3 @@
-
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,11 +51,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoggingIn }) => {
 
         if (!shopId) {
           // Owner has no shops - show setup modal
+          setCurrentOwnerId(user.id);
           setShowShopSetupModal(true);
           return;
         }
         // Owner has shop - redirect to dashboard
-        navigate(`/owner/dashboard/${slug || shopId}`);
+        navigate(`/owner/${slug}/dashboard`);
         return;
       }
 
@@ -73,10 +73,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoggingIn }) => {
     }
   };
 
-  const handleShopCreated = (shopId: string) => {
+  const handleShopCreated = (slug: string) => {
     setShowShopSetupModal(false); // Close the modal
-    console.log(`Shop created: ${shopId}. Redirecting to owner dashboard.`);
-    navigate(`/owner/dashboard/${shopId}`); // Navigate to the owner's dashboard
+    console.log(`Shop created: ${slug}. Redirecting to owner dashboard.`);
+    navigate(`/owner/${slug}/dashboard`); // Navigate to the owner's dashboard using slug
   };
 
   return (

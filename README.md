@@ -83,3 +83,62 @@ Create a new project in Firebase and copy the config object.
 npm install firebase
 ```
 
+
+
+
+
+
+
+
+
+
+
+
+
+ // Sample data for demo
+  // const plans = [
+  // {
+  //   name: "Free",
+  //   price: "₹0/mo",
+  //   features: [
+  //     "1 Shop",
+  //     "Max 10 menu items",
+  //     "Basic order management",
+  //     "Standard support"
+  //   ],
+  // },
+  // {
+  //   name: "Pro",
+  //   price: "₹999/mo",
+  //   features: [
+  //     "Unlimited shops",
+  //     "Unlimited menu items",
+  //     "Advanced analytics",
+  //     "Automated order printing",
+  //     "Premium chat support"
+  //   ],
+  //   recommended: true,
+  // },
+  // {
+  //   name: "Enterprise",
+  //   price: "Contact Us",
+  //   features: [
+  //     "All Pro features",
+  //     "Custom integrations",
+  //     "Dedicated account manager",
+  //     "Priority phone support"
+  //   ]
+  // }
+  // ];
+
+  // Simulated owner plan info
+  // const currentPlan = {
+  //   name: "Pro",
+  //   expires: "2025-07-01",
+  //   daysLeft: 18,
+  // };
+  // const paymentHistory = [
+  //   { date: "2024-07-01", amount: "₹999", status: "Paid", method: "Razorpay", details: "Pro Plan Renewal" },
+  //   { date: "2024-06-01", amount: "₹999", status: "Paid", method: "Razorpay", details: "Pro Plan Renewal" },
+  //   { date: "2024-05-01", amount: "₹999", status: "Paid", method: "Razorpay", details: "Pro Plan Renewal" },
+  // ];

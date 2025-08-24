@@ -28,7 +28,7 @@ const Login: React.FC = () => {
           try {
             const { slug } = await fetchAndSetShopData(currentUser.id);
             if (slug) {
-              navigate(`/owner/dashboard/${slug}`);
+              navigate(`/owner/${slug}/dashboard`);
             } else {
               // Handle case where owner has no shops
               navigate('/owner/no-shops');
@@ -42,7 +42,7 @@ const Login: React.FC = () => {
         // If we already have the slug, redirect immediately
         else if (currentShopSlug) {
           navigate(currentUser.role === 'owner'
-            ? `/owner/dashboard/${currentShopSlug}`
+            ? `/owner/${currentShopSlug}/dashboard`
             : `/customer/${currentShopSlug}/menu`);
         }
       }

@@ -22,7 +22,7 @@ const OwnerChat: React.FC = () => {
     } else if (!currentShopId) {
       navigate('/not-found');
     } else if (currentUser.role !== 'owner') {
-      navigate('/customer/menu');
+      navigate(`/customer/${currentShopSlug}/menu`);
     }
   }, [currentUser, navigate]);
 
@@ -40,7 +40,7 @@ const OwnerChat: React.FC = () => {
   
   // Get all active orders
   const activeOrders = getPendingOrders(orders);
-  
+  console.log(activeOrders, 'activeOrders');
   if (!orderId) {
     return (
       <div className="min-h-screen flex flex-col">

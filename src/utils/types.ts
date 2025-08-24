@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -7,6 +6,7 @@ export interface User {
   role: 'customer' | 'owner';
   isAnonymous?: boolean;
   linkedShops?: string[];
+  razorpayCustomerId?: string;
 }
 
 export interface Category {
@@ -33,7 +33,7 @@ export interface MenuItemForm extends Omit<MenuItem, 'image'> {
 
 export interface Order {
   id: string;
-  customerId: string;
+  customerId?: string;
   shopId: string;
   name: string;
   phone: string;
@@ -48,10 +48,14 @@ export interface Order {
   paymentStatus: 'paid' | 'pending' | 'failed';
   paymentCollectionId?: string;
   totalAmount: number;
-  createdAt: string;
+  createdAt: import("firebase/firestore").Timestamp; // Changed to Firebase Timestamp
   estimatedPickupTime?: string;
   specialInstructions?: string;
 }
+
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+
+export type PaymentStatus = 'paid' | 'pending' | 'failed';
 
 export interface ChatMessage {
   id: string;
@@ -108,3 +112,56 @@ export interface PaidOutCollection {
   timestamp: string;
 }
 
+
+
+export type SubscriptionPlan = {
+  id: string;
+  name: string;
+  price: string; // "₹999/mo"
+  priceInPaise: number; // 99900 (for Razorpay)
+  razorpayPlanId?: string; // "plan_XYZ123"
+  features: string[];
+  recommended: boolean;
+  billingCycle: 'monthly' | 'yearly';
+  createdAt: Date;
+};
+
+export type UserSubscription = {
+  userId: string;
+  planId: string;
+  shopNumbers: number;
+  razorpaySubscriptionId: string;
+  status: 'active' | 'expired' | 'cancelled' | 'pending';
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  daysLeft: number;
+  createdAt: Date,
+  updatedAt: Date,
+  cancelledAt: Date, // When user cancelled (if applicable)
+  cancellationReason: string, // Optional
+  nextBillingDate: Date, // For active subscriptions
+  trialEnd: Date // If you offer trials
+};
+
+export type SubscriptionPaymentRecord = {
+  id: string;
+  subscriptionId: string,
+  amount: number; // in paise
+  currency: 'INR';
+  status: 'paid' | 'failed' | 'refunded';
+  method: 'razorpay' | 'cash' | 'bank_transfer';
+  razorpayPaymentId?: string;
+  invoiceUrl?: string;
+  createdAt: Date;
+  paymentDate: Date,
+  billingPeriodStart: Date,
+  billingPeriodEnd: Date,
+  refunds: [
+    {
+      amount: number,
+      reason: string,
+      processedAt: Date,
+      processedBy: string // Admin who processed
+    }
+  ]
+};

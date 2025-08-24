@@ -11,6 +11,7 @@ interface OrdersListProps {
   hasMore?: boolean;
   onLoadMore?: () => Promise<void>;
   loading?: boolean;
+  refreshOrders?: () => Promise<void>;
 }
 
 const OrdersList: React.FC<OrdersListProps> = ({ 
@@ -18,7 +19,8 @@ const OrdersList: React.FC<OrdersListProps> = ({
   showActions = true,
   hasMore = false,
   onLoadMore,
-  loading = false
+  loading = false,
+  refreshOrders
 }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -49,6 +51,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
             key={order.id} 
             order={order}
             showActions={showActions}
+            refreshOrders={refreshOrders}
           />
         ))}
       </div>

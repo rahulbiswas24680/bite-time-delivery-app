@@ -18,6 +18,7 @@ import { getMenuItemById } from '../../data/menuItems';
 import { getPendingOrders, updateOrderStatus } from '../../data/orders';
 import { getCustomerUsers } from '../../data/users';
 import { MenuItem, Order, User } from '../../utils/types';
+import { Tabs, TabsList, TabsTrigger } from '@radix-ui/react-tabs';
 
 type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready';
 
@@ -27,7 +28,6 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 
 const Dashboard: React.FC = () => {
   const { currentUser, currentShopId, currentShopSlug } = useAuth();
-
 
   const [loading, setLoading] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus>('pending');
@@ -44,49 +44,40 @@ const Dashboard: React.FC = () => {
   const [lastDoc, setLastDoc] = React.useState<DocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = React.useState(false);
 
+  const [dateFilter, setDateFilter] = React.useState<string>('today');
+
   const navigate = useNavigate();
 
-  // If user is not logged in or not an owner, redirect to login
   React.useEffect(() => {
     if (!currentUser && !currentShopId) {
       navigate('/login');
     } else if (currentUser && currentUser.role !== 'owner') {
-      navigate('/customer/menu');
+      navigate(`/customer/${currentShopSlug}/menu`);
     } else if (!currentShopId) {
-      navigate('*');
+      navigate('/not-found');
     }
   }, [currentUser, navigate]);
 
+  const loadOrders = async () => {
+    if (!currentShopId) return;
+    setLoading(true);
+    const res = await fetchOrdersByStatus(selectedStatus, currentShopId, undefined, dateFilter);
+    setOrders(res.data);
+    setLastDoc(res.lastDoc);
+    setHasMore(res.data.length === 5);
+    setTotalCounts(prev => ({ ...prev, [selectedStatus]: res.total }));
+    setLoading(false);
+  };
 
   React.useEffect(() => {
-    if (!currentShopId) return;
-
-    const load = async () => {
-      setLoading(true);
-      const res = await fetchOrdersByStatus(selectedStatus, currentShopId);
-      console.log('orders', res);
-      setOrders(res.data);
-      setLastDoc(res.lastDoc);
-      setHasMore(res.data.length === 5);
-
-
-      // ✅ update total count
-      setTotalCounts((prev) => ({
-        ...prev,
-        [selectedStatus]: res.total,
-      }));
-      setLoading(false);
-    };
-
-    load();
-  }, [selectedStatus, currentShopId]);
+    loadOrders();
+  }, [selectedStatus, currentShopId, dateFilter]);
 
   React.useEffect(() => {
     const fetchCustomers = async () => {
       const data = await getCustomerUsers();
       setUsers(data);
     };
-
     fetchCustomers();
   }, []);
 
@@ -103,22 +94,13 @@ const Dashboard: React.FC = () => {
           }
         }
       }
-
       setMenuItemMap(map);
     };
-
-    if (orders.length > 0) {
-      fetchMenuItems();
-    }
+    if (orders.length > 0) fetchMenuItems();
   }, [orders]);
 
-
-
-
-  // Get all pending orders
   const pendingOrders = getPendingOrders(orders);
 
-  // Group orders by status
   const ordersByStatus: Record<string, Order[]> = {
     pending: [],
     confirmed: [],
@@ -126,25 +108,21 @@ const Dashboard: React.FC = () => {
     ready: [],
   };
 
-  pendingOrders.forEach(order => {
+  orders.forEach(order => {
     if (ordersByStatus[order.status]) {
       ordersByStatus[order.status].push(order);
     }
   });
 
-  // Handle status update
   const handleUpdateStatus = (orderId: string, newStatus: Order['status'], currentShopId: string) => {
     updateOrderStatus(orders, orderId, newStatus, currentShopId);
-    // Force a re-render
     setPendingOrders([...getPendingOrders(orders)]);
     toast.success('Order status updated!', {
       description: `Order #${orderId} has been updated to ${newStatus}.`,
     });
   };
 
-  // Handle delete order
   const handleDeleteOrder = (orderId: string) => {
-    // Remove the order from the orders array
     setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
     deleteOrderById(orderId);
     toast.success('Order deleted successfully!', {
@@ -152,35 +130,39 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  // State to track orders (for re-renders)
   const [pendingOrdersState, setPendingOrders] = React.useState(pendingOrders);
 
-  // Get customer name from order
   const getCustomerName = (customerId: string) => {
     const customer = users.find(user => user.id === customerId);
     return customer ? customer.name : 'Unknown Customer';
   };
 
-  // Format date/time
   const formatTime = (dateString?: string) => {
     if (!dateString) return 'Not set';
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // load more orders
   const handleLoadMore = async () => {
     if (!lastDoc || !hasMore || loading) return;
     setLoading(true);
     try {
-      const res = await fetchOrdersByStatus(selectedStatus, currentShopId, lastDoc);
+      const res = await fetchOrdersByStatus(selectedStatus, currentShopId, lastDoc, dateFilter);
       setOrders(prev => [...prev, ...res.data]);
       setLastDoc(res.lastDoc);
-      if (res.data.length < 5) setHasMore(false);
+      setHasMore(res.data.length === 5);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollTop + clientHeight >= scrollHeight - 50 && !loading && hasMore) {
+      handleLoadMore();
+    }
+  };
+
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -222,41 +204,62 @@ const Dashboard: React.FC = () => {
         {/* Interactive buttons for status change */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Order Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(['pending', 'confirmed', 'preparing', 'ready'] as OrderStatus[]).map((status) => (
-              <Card
-                key={status}
-                onClick={() => setSelectedStatus(status)}
-                className={cn(
-                  "cursor-pointer border-2 transition-colors",
-                  selectedStatus === status
-                    ? "border-food-orange bg-orange-50"
-                    : "border-transparent hover:border-gray-300"
-                )}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg capitalize">{status}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            {/* Status Tabs */}
+            <Tabs
+              value={selectedStatus}
+              onValueChange={(value) => setSelectedStatus(value as OrderStatus)}
+              className="w-full lg:w-auto"
+            >
+              <TabsList className="grid grid-cols-2 sm:grid-cols-4 bg-slate-100 p-1 rounded-lg">
+                {(['pending', 'confirmed', 'preparing', 'ready'] as OrderStatus[]).map((status) => (
+                  <TabsTrigger
+                    key={status}
+                    value={status}
+                    className="capitalize data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-md text-slate-600 transition-all px-4 py-2"
+                  >
+                    {status}
+                    <span
+                      className={cn(
+                        "ml-2 rounded-full px-2 py-0.5 text-sm font-semibold",
+                        status === 'pending' && "bg-yellow-100 text-yellow-700 border border-yellow-200",
+                        status === 'confirmed' && "bg-blue-100 text-blue-700 border border-blue-200",
+                        status === 'preparing' && "bg-purple-100 text-purple-700 border border-purple-200",
+                        status === 'ready' && "bg-green-100 text-green-700 border border-green-200"
+                      )}
+                    >
+                      {totalCounts[status] || 0}
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            {/* Date Filter Dropdown */}
+            <div className="flex-shrink-0">
+              <div className="inline-flex rounded-md shadow-sm overflow-hidden border border-slate-200">
+                {(['day', 'week', 'month', 'year'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setDateFilter(range)}
                     className={cn(
-                      "text-3xl font-bold",
-                      status === 'pending' && "text-yellow-500",
-                      status === 'confirmed' && "text-blue-500",
-                      status === 'preparing' && "text-purple-500",
-                      status === 'ready' && "text-food-green"
+                      "px-4 py-2 text-sm font-medium focus:outline-none transition",
+                      dateFilter === range
+                        ? "bg-slate-700 text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-100"
                     )}
                   >
-                    {totalCounts[status] || 0}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-
+                    {range.charAt(0).toUpperCase() + range.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-6">
+
+
+        <div className="space-y-6 overflow-y-auto" onScroll={handleScroll} style={{ maxHeight: 'calc(100vh - 250px)' }}>
           {/* Orders that need attention first */}
           {ordersByStatus.pending.length > 0 && (
             <section>
@@ -372,9 +375,6 @@ const Dashboard: React.FC = () => {
               )}
             </section>
           )}
-
-
-
 
           {/* Confirmed orders */}
           {ordersByStatus.confirmed.length > 0 && (
@@ -595,12 +595,12 @@ const Dashboard: React.FC = () => {
                           })}
                         </ul>
                       </CardContent>
-                          <FinalOrderSubmitFooter 
-                          order={order}
-                          currentShopId={currentShopId}
-                          currentShopSlug={currentShopSlug}
-                          handleUpdateStatus={handleUpdateStatus}
-                          />
+                      <FinalOrderSubmitFooter
+                        order={order}
+                        currentShopId={currentShopId}
+                        currentShopSlug={currentShopSlug}
+                        handleUpdateStatus={handleUpdateStatus}
+                      />
                     </Card>
                   )
                 })}
@@ -616,8 +616,8 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 };
 

@@ -1,45 +1,81 @@
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/Layout/Navbar';
 import ChatInterface from '../../components/Chat/ChatInterface';
 import { Order } from '@/utils/types';
 import { getOrdersByCustomerId } from '@/backend/order';
+import { DocumentSnapshot } from 'firebase/firestore';
 
 const CustomerChat: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const { currentUser, currentShopId, currentShopSlug } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
   const navigate = useNavigate();
   console.log('OrderCard', orderId);
+
+  const loaderRef = useRef<HTMLDivElement | null>(null);
+
+
   // Redirect if not logged in or not a customer
   React.useEffect(() => {
     if (!currentUser) {
       navigate('/login');
     } else if (currentUser.role !== 'customer') {
-      navigate('/owner/dashboard');
+      navigate(`/owner/${currentShopSlug}/dashboard`);
     }
   }, [currentUser, navigate]);
 
   React.useEffect(() => {
+    // Reset state when shop changes
+    setOrders([]);
+    setLastDoc(null);
+    setHasMore(true);
     if (currentUser && currentShopId) {
-      // Fetch orders for the current shop
-      const fetchOrders = async () => {
-        try {
-          const data = await getOrdersByCustomerId(currentUser.id, currentShopId);
-          console.log('shop id---', data);
-          setOrders(data);
-        } catch (error) {
-          console.error('Error fetching orders:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchOrders();
+      loadMoreOrders();
     }
   }, [currentUser, currentShopId]);
+
+
+  const loadMoreOrders = async () => {
+      if (!currentUser || !currentShopId || !hasMore) return;
+      setLoading(true);
+      try {
+        const { data, lastDoc: newLastDoc } = await getOrdersByCustomerId(
+          currentUser.id,
+          currentShopId,
+          lastDoc
+        );
+        setOrders((prev) => [...prev, ...data]);
+        setLastDoc(newLastDoc);
+        setHasMore(data.length >= 5);
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  React.useEffect(() => {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !loading && hasMore) {
+            loadMoreOrders();
+          }
+        },
+        { threshold: 1.0 }
+      );
+      if (loaderRef.current) {
+        observer.observe(loaderRef.current);
+      }
+      return () => {
+        if (loaderRef.current) observer.unobserve(loaderRef.current);
+      };
+    }, [loaderRef, loading, hasMore]);
 
 
 if (!orderId) {

@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ChatMessage } from '../../utils/types';
 import { sendChatMessage, listenToChatMessages } from '../../data/chatMessages';
 import { getOrderById } from '../../backend/order';
-import { users } from '../../data/users';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -13,6 +12,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { get } from 'http';
 import { getShopOwnerId } from '@/backend/shop';
+import { getUserById } from '@/backend/authService';
 
 interface ChatInterfaceProps {
   orderId: string;
@@ -24,9 +24,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
   const [newMessage, setNewMessage] = useState('');
   const [order, setOrder] = useState<any | null>(null);
   const [chatPartnerId, setChatPartnerId] = useState<string | null>(null);
+  const [userCache, setUserCache] = useState<{ [key: string]: any }>({});
   const [chatPartner, setChatPartner] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
+
+
+  const fetchUserById = async (userId: string) => {
+    if (userCache[userId]) return userCache[userId];
+    try {
+      const user = await getUserById(userId);
+      if (user) {
+        setUserCache(prev => ({ ...prev, [userId]: user }));
+        return user;
+      }
+    } catch (err) {
+      console.warn(`Failed to fetch user ${userId}`, err);
+    }
+    return null;
+  };
 
   // 🔄 Load specific order by orderId
   useEffect(() => {
@@ -34,49 +50,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
       if (!currentUser) return;
       try {
         const foundOrder = await getOrderById(orderId);
-        console.log('Fetched order:', foundOrder);
         setOrder(foundOrder || null);
         
-        // Determine chat partner
-        const partnerId = currentUser?.role === 'customer' 
-          ? await getShopOwnerId(order?.shopId) 
-          : order?.customerId || null;
-        
+        const partnerId = currentUser.role === 'customer' ? foundOrder?.shopId : foundOrder?.customerId || null;
         setChatPartnerId(partnerId);
-        
-        // Find partner user details
-        const partner = users.find(user => user.id === partnerId);
-        setChatPartner(partner || null);
-        console.log('Chat Partner:', partnerId);
 
-
+        if (partnerId) {
+          if (currentUser.role === 'customer') {
+            const shopOwner = await getShopOwnerId(partnerId);
+            const chatPartner = await fetchUserById(shopOwner);
+            console.log(`Partner ID: ${chatPartner}`);
+            setChatPartner(chatPartner);
+          } else {
+            const chatPartner = await fetchUserById(partnerId);
+            console.log(`Partner ID: ${chatPartner}`);
+            setChatPartner(chatPartner);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch order:', error);
-        setOrder(null);
       }
     };
-
     loadOrder();
   }, [currentUser, orderId]);
 
 
+  // ✅ Listen to messages
   useEffect(() => {
     if (!orderId) return;
-    console.log('Listening to chat messages for orderId:', orderId);
     setLoading(true);
-    const unsubscribe = listenToChatMessages(orderId, (newMessages) => {
+    const unsubscribe = listenToChatMessages(orderId, async (newMessages) => {
       setMessages(newMessages);
       setLoading(false);
     });
-
-    return () => {
-      unsubscribe(); // Stop listening when component unmounts or orderId changes
-    };
+    return () => unsubscribe();
   }, [orderId]);
 
   useEffect(() => {
-    // Scroll to bottom of chat when messages change
     scrollToBottom();
+  }, [messages]);
+
+  // ✅ Fetch missing users from messages
+  useEffect(() => {
+    const fetchSenders = async () => {
+      const senderIds = [...new Set(messages.map(msg => msg.senderId))];
+      const missing = senderIds.filter(id => !userCache[id]);
+      await Promise.all(missing.map(fetchUserById));
+    };
+    if (messages.length) fetchSenders();
   }, [messages]);
 
   const scrollToBottom = () => {
@@ -153,7 +174,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
             <div className="space-y-4">
               {messages.map((msg) => {
                 const isSender = msg.senderId === currentUser.id;
-                const sender = users.find(user => user.id === msg.senderId);
+                const sender = userCache[msg.senderId];
 
                 return (
                   <div
@@ -197,6 +218,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ orderId }) => {
           <Textarea
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                if (newMessage.trim()) {
+                  handleSendMessage(e)
+                }
+              }
+            }}
             placeholder={`Message ${chatPartner?.name || 'the restaurant'}...`}
             className="flex-1 resize-none h-10 py-2"
           />

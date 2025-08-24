@@ -9,13 +9,15 @@ import { Eye, Loader2 } from 'lucide-react';
 import OrderDetailsModal from './OrderDetailsModal';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
+import { updateOrderPaymentStatus } from '@/backend/order';
 
 interface OrderCardProps {
   order: Order;
   showActions?: boolean;
+  refreshOrders?: () => void;
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
+const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true, refreshOrders }) => {
   const navigate = useNavigate();
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const { currentUser, currentShopId, currentShopSlug } = useAuth();
@@ -205,7 +207,10 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true }) => {
               </div>
               {order.paymentStatus === 'pending' && currentUser?.role === 'owner' && (
                 <Button
-                  onClick={() => handlePayment()}
+                  onClick={() => {
+                    updateOrderPaymentStatus(currentShopId, order.id, 'paid');
+                    refreshOrders();       
+                  }}
                   className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                 >
                   Mark As Paid <span><small>(Used for Cash Payment)</small></span>

@@ -68,16 +68,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 
   const fetchAndSetShopData = async (userId: string) => {
+    const savedId = localStorage.getItem('currentShopId');
+    const savedSlug = localStorage.getItem('currentShopSlug');
+
+    if (savedId && savedSlug) {
+      setCurrentShopId(savedId);
+      setCurrentShopSlug(savedSlug);
+      return { id: savedId, slug: savedSlug };
+    }
+    // If not in localStorage, fetch from Firestore
     const { id, slug } = await fetchOwnerShopData(userId);
     setCurrentShopId(id);
     setCurrentShopSlug(slug);
+    localStorage.setItem('currentShopId', id);
+    localStorage.setItem('currentShopSlug', slug);
     return { id, slug };
   };
 
   const fetchAndSetCustomerShopsData = async (customerId: string) => {
-    const { id, slug } = await fetchCustomerShopsData(customerId);
+    const savedId = localStorage.getItem('currentShopId');
+    const savedSlug = localStorage.getItem('currentShopSlug');
+
+    if (savedId && savedSlug) {
+      setCurrentShopId(savedId);
+      setCurrentShopSlug(savedSlug);
+      return { id: savedId, slug: savedSlug };
+    }
+
+    // If not in localStorage, fetch from Firestore
+      const { id, slug } = await fetchCustomerShopsData(customerId);
     setCurrentShopId(id);
     setCurrentShopSlug(slug);
+    localStorage.setItem('currentShopId', id);
+    localStorage.setItem('currentShopSlug', slug);
     return { id, slug };
   };
 
@@ -124,6 +147,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phone: userData.phone || '',
           role: userData.role as ('customer' | 'owner'),
           isAnonymous: userData.isAnonymous || false,
+          linkedShops: userData.linkedShops || null,
+          razorpayCustomerId: userData.razorpayCustomerId || null
         };
         setCurrentUser(appUser);
 
@@ -136,6 +161,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setCurrentUser(null);
         setCurrentShopId(null);
+        localStorage.removeItem('currentShopId');
+        localStorage.removeItem('currentShopSlug');
         setLoading(false);
       }
     });
@@ -189,6 +216,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: userDocSnap.data().phone || '',
         role: userDocSnap.data().role as ('customer' | 'owner'),
         isAnonymous: userDocSnap.data().isAnonymous || false,
+        linkedShops: userDocSnap.data().linkedShops || null,
+        razorpayCustomerId: userDocSnap.data().razorpayCustomerId || null
       };
       localStorage.setItem('user', JSON.stringify(loggedInUser));
       setCurrentUser(loggedInUser);
@@ -244,6 +273,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await logoutUser();
       setCurrentUser(null);
       setCurrentShopId(null);
+      localStorage.removeItem('currentShopId');
+      localStorage.removeItem('currentShopSlug');
     } catch (err: any) {
       setError(err.message);
     }
