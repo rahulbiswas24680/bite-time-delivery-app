@@ -34,7 +34,7 @@ const Navbar: React.FC<{ hideShops?: boolean, disableShops?: boolean }> = ({ hid
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center">
-                <img src="/favicon-32x32.png" alt="Stackorq Logo" className="w-8 h-8" />
+                <img src="/favicon.svg" alt="Stackorq Logo" className="w-8 h-8" />
               <span className="text-food-orange px-3 py-2 rounded-md text-lg font-bold tracking-wide">
                 Stackorq
               </span>

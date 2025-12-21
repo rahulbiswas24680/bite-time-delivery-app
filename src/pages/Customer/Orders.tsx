@@ -9,7 +9,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { DocumentSnapshot } from "firebase/firestore";
 
 const Orders: React.FC = () => {
-  const { currentUser, currentShopId, currentShopSlug } = useAuth();
+  const { currentUser, currentShopId, currentShopSlug, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,12 +20,13 @@ const Orders: React.FC = () => {
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (authLoading) return; // Wait for auth to finish loading
     if (!currentUser) {
       navigate("/login");
     } else if (currentUser.role !== "customer") {
       navigate(`/owner/${currentShopSlug}/dashboard`);
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, authLoading, navigate]);
 
   useEffect(() => {
     // Reset state when shop changes

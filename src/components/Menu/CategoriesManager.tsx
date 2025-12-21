@@ -16,14 +16,15 @@ const CategoriesManager = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [newCategory, setNewCategory] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
-
 
     // Fetch categories on load
     useEffect(() => {
         if (!currentShopId) return;
 
         const fetchCategories = async () => {
+            setIsLoading(true);
             try {
                 const catRef = collection(db, 'categories');
                 const q = query(catRef, where('shopId', '==', currentShopId));
@@ -34,17 +35,19 @@ const CategoriesManager = () => {
                 }));
                 setCategories(data);
             } catch (error) {
+                console.error('Error fetching categories:', error);
                 toast({
                     title: 'Error',
-                    description: 'Failed to fetch categories',
+                    description: 'Failed to fetch categories. Please check your connection.',
                     variant: 'destructive',
                 });
+            } finally {
+                setIsLoading(false);
             }
         };
 
         fetchCategories();
-    }, [currentShopId]);
-
+    }, [currentShopId, toast]);
 
     const handleAddCategory = async () => {
         if (!newCategory.trim()) {
@@ -62,6 +65,7 @@ const CategoriesManager = () => {
             const docRef = await addDoc(collection(db, 'categories'), {
                 name: newCategory.trim(),
                 shopId: currentShopId,
+                createdAt: new Date(),
             });
 
             const newItem: Category = {
@@ -77,9 +81,10 @@ const CategoriesManager = () => {
                 description: 'Category added successfully',
             });
         } catch (error) {
+            console.error('Error adding category:', error);
             toast({
                 title: 'Error',
-                description: 'Failed to add category',
+                description: 'Failed to add category. Please try again.',
                 variant: 'destructive',
             });
         } finally {
@@ -102,6 +107,7 @@ const CategoriesManager = () => {
                 });
                 return;
             }
+            
             // Safe to delete
             await deleteDoc(doc(db, 'categories', id));
             setCategories(prev => prev.filter(cat => cat.id !== id));
@@ -110,9 +116,10 @@ const CategoriesManager = () => {
                 description: 'Category removed',
             });
         } catch (error) {
+            console.error('Error deleting category:', error);
             toast({
                 title: 'Error',
-                description: 'Failed to delete category',
+                description: 'Failed to delete category. Please try again.',
                 variant: 'destructive',
             });
         }
@@ -121,6 +128,19 @@ const CategoriesManager = () => {
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
             handleAddCategory();
+        }
+    };
+
+    // Additional troubleshooting steps you can implement:
+    const checkFirebaseConnection = async () => {
+        try {
+            // Simple test query to check connection
+            const testQuery = query(collection(db, 'categories'), where('shopId', '==', 'test'));
+            await getDocs(testQuery);
+            return true;
+        } catch (error) {
+            console.error('Firebase connection test failed:', error);
+            return false;
         }
     };
 
@@ -150,7 +170,7 @@ const CategoriesManager = () => {
                                     value={newCategory}
                                     onChange={e => setNewCategory(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || isLoading}
                                 />
                             </div>
                         </div>
@@ -158,7 +178,7 @@ const CategoriesManager = () => {
                     <CardFooter className="flex justify-end border-t px-6 py-4">
                         <Button
                             onClick={handleAddCategory}
-                            disabled={!newCategory.trim() || isSubmitting}
+                            disabled={!newCategory.trim() || isSubmitting || isLoading}
                         >
                             {isSubmitting ? (
                                 "Adding..."
@@ -172,7 +192,13 @@ const CategoriesManager = () => {
                     </CardFooter>
                 </Card>
 
-                {categories.length > 0 ? (
+                {isLoading ? (
+                    <Card className="border-0 shadow-sm">
+                        <CardContent className="py-8 text-center">
+                            <p className="text-muted-foreground">Loading categories...</p>
+                        </CardContent>
+                    </Card>
+                ) : categories.length > 0 ? (
                     <Card className="border-0 shadow-sm">
                         <CardHeader className="pb-4">
                             <CardTitle className="text-xl">Your Categories</CardTitle>
@@ -190,6 +216,7 @@ const CategoriesManager = () => {
                                             size="icon"
                                             onClick={() => handleDelete(cat.id)}
                                             className="text-destructive hover:text-destructive/80"
+                                            disabled={isLoading}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
@@ -212,4 +239,4 @@ const CategoriesManager = () => {
     );
 };
 
-export default CategoriesManager
+export default CategoriesManager;

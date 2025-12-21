@@ -21,6 +21,20 @@
   <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<link rel="manifest" href="/manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(registration => {
+        console.log('Service worker registered:', registration);
+      }).catch(registrationError => {
+        console.error('Service worker registration failed:', registrationError);
+      });
+    });
+  } else {
+    console.error('Service workers are not supported.');
+  }
+</script>
 </head>
 
 <body>

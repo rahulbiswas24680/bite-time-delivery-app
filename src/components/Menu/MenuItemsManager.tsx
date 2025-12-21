@@ -47,7 +47,7 @@ const MenuItemsManager = () => {
                     ...(doc.data() as Omit<MenuItem, 'id'>),
                     image: doc.data().image || '/default-food.png'
                 }));
-                console.log(itemsData);
+                console.log('menu items', itemsData);
 
                 // Fetch categories
                 const categoriesRef = collection(db, 'categories');
@@ -180,7 +180,13 @@ const MenuItemsManager = () => {
                     <TableBody>
                         {menuItems.map((item) => (
                             <TableRow key={item.id}>
-                                <TableCell className="font-medium">Image</TableCell>
+                                <TableCell className="font-medium">
+                                    <img
+                                        src={item.image}
+                                        alt={item.name}
+                                        className="h-12 w-12 object-cover rounded"
+                                    />
+                                </TableCell>
                                 <TableCell className="font-medium">{item.name}</TableCell>
                                 <TableCell className="text-gray-500 line-clamp-1">
                                     {item.description}
@@ -298,12 +304,12 @@ const MenuItemsManager = () => {
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) {
-                                        // Verify we have a real File object
-                                        console.log('File type:', file.constructor.name); // Should log "File"
-                                        setCurrentItem(prev => ({
-                                            ...prev!,
-                                            image: file, // Store the actual File object
-                                        }));
+                                            // Verify we have a real File object
+                                            console.log('File type:', file.constructor.name); // Should log "File"
+                                            setCurrentItem(prev => ({
+                                                ...prev!,
+                                                image: file, // Store the actual File object
+                                            }));
                                         }
                                     }}
                                     id="upload-image"
@@ -318,7 +324,11 @@ const MenuItemsManager = () => {
                                     Upload Image
                                 </Button>
                                 {currentItem?.image && (
-                                    <span className="text-sm text-gray-500">Image selected</span>
+                                    typeof currentItem.image === 'string' ? (
+                                        <img src={currentItem.image} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                                    ) : (
+                                        <img src={URL.createObjectURL(currentItem.image as File)} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                                    )
                                 )}
                             </div>
                         </div>

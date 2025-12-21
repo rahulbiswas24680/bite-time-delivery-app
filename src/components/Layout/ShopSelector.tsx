@@ -12,8 +12,8 @@ import { slugify } from '@/utils/helper';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-
-
+import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2Icon } from 'lucide-react';
 type ShopWithSlug = ShopDetails & { slug: string };
 
 const ShopSelector: React.FC<{ disableShops?: boolean }> = ({ disableShops }) => {
@@ -99,8 +99,20 @@ const ShopSelector: React.FC<{ disableShops?: boolean }> = ({ disableShops }) =>
   };
 
   if (shops.length === 0) {
-    // could be a spinner, skeleton, etc.
-    return <span className="text-sm text-gray-500">Loading Shops</span>;
+    return (
+      <Select disabled>
+        <SelectTrigger className="bg-white border-gray-300">
+          <SelectValue placeholder="Select shop" />
+          <div className="flex items-center">
+            <span className="mr-2">Loading...</span>
+            <Loader2Icon className="h-4 w-4 animate-spin" />
+          </div>
+        </SelectTrigger>
+        <SelectContent>
+          {/* Empty content while loading */}
+        </SelectContent>
+      </Select>
+    );
   }
 
   return (

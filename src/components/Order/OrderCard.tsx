@@ -194,16 +194,18 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, showActions = true, refres
                   variant="outline"
                   onClick={() => setShowDetailsModal(true)}
                   className="flex items-center gap-2 w-full sm:w-auto"
-                >
+                  >
                   <Eye className="h-4 w-4" />
                   View Details
                 </Button>
+                {["pending", "confirmed", "preparing", "ready"].includes(order.status) && (
                 <Button
                   onClick={() => navigate(`/customer/${currentShopSlug}/chat/${order.id}`)}
                   className="bg-food-orange hover:bg-orange-600 w-full sm:w-auto"
                 >
                   Chat with Restaurant
                 </Button>
+                )}
               </div>
               {order.paymentStatus === 'pending' && currentUser?.role === 'owner' && (
                 <Button

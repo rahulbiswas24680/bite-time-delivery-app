@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/Auth/ProtectedRoute";
 
 // Pages
 import Home from "./pages/Home";
@@ -51,24 +52,24 @@ const App = () => (
             {/* -----------------------------Customer Routes with anonymous registration ------------------------- */}
             <Route path="/customer/:shopId/anonymous-register" element={<AnonymousRegister />} />
 
-            <Route path="/customer/:shopSlug/menu" element={<Menu />} />
-            <Route path="/customer/:shopSlug/orders" element={<Orders />} />
-            <Route path="/customer/:shopSlug/chat" element={<CustomerChat />} />
-            <Route path="/customer/:shopSlug/chat/:orderId" element={<CustomerChat />} />
-            <Route path="/customer/:shopSlug/checkout" element={<Checkout />} />
+            <Route path="/customer/:shopSlug/menu" element={<ProtectedRoute requiredRole="customer"><Menu /></ProtectedRoute>} />
+            <Route path="/customer/:shopSlug/orders" element={<ProtectedRoute requiredRole="customer"><Orders /></ProtectedRoute>} />
+            <Route path="/customer/:shopSlug/chat" element={<ProtectedRoute requiredRole="customer"><CustomerChat /></ProtectedRoute>} />
+            <Route path="/customer/:shopSlug/chat/:orderId" element={<ProtectedRoute requiredRole="customer"><CustomerChat /></ProtectedRoute>} />
+            <Route path="/customer/:shopSlug/checkout" element={<ProtectedRoute requiredRole="customer"><Checkout /></ProtectedRoute>} />
             
             
             {/* Owner Routes */}
-            <Route path="/owner/:shopSlug/dashboard" element={<Dashboard />} />
-            <Route path="/owner/:shopSlug/menus" element={<MenuManagement />} />
-            <Route path="/owner/:shopSlug/chat" element={<OwnerChat />} />
-            <Route path="/owner/:shopSlug/chat/:orderId" element={<OwnerChat />} />
-            <Route path="/owner/:shopSlug/orders" element={<OwnerOrders />} />
-            <Route path="/owner/my-shops" element={<OwnerShops />} />
-            <Route path="/owner/:shopSlug/billing" element={<Billings />} />
+            <Route path="/owner/:shopSlug/dashboard" element={<ProtectedRoute requiredRole="owner"><Dashboard /></ProtectedRoute>} />
+            <Route path="/owner/:shopSlug/menus" element={<ProtectedRoute requiredRole="owner"><MenuManagement /></ProtectedRoute>} />
+            <Route path="/owner/:shopSlug/chat" element={<ProtectedRoute requiredRole="owner"><OwnerChat /></ProtectedRoute>} />
+            <Route path="/owner/:shopSlug/chat/:orderId" element={<ProtectedRoute requiredRole="owner"><OwnerChat /></ProtectedRoute>} />
+            <Route path="/owner/:shopSlug/orders" element={<ProtectedRoute requiredRole="owner"><OwnerOrders /></ProtectedRoute>} />
+            <Route path="/owner/my-shops" element={<ProtectedRoute requiredRole="owner"><OwnerShops /></ProtectedRoute>} />
+            <Route path="/owner/:shopSlug/billing" element={<ProtectedRoute requiredRole="owner"><Billings /></ProtectedRoute>} />
             {
               import.meta.env.VITE_DEV_SERVER ?
-              <Route path="/owner/test-upload" element={<TestUpload />} /> : null
+              <Route path="/owner/test-upload" element={<ProtectedRoute requiredRole="owner"><TestUpload /></ProtectedRoute>} /> : null
             }
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />

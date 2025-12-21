@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { calculateDaysLeft, calculatePeriodEnd } from '@/utils/helper';
 import { useNavigate } from 'react-router-dom';
 import { getUserShopCount } from '@/backend/shop';
+import ReactPaginate from 'react-paginate';
 
 const Billings = () => {
   const { currentUser, currentShopId, currentShopSlug } = useAuth();
@@ -27,6 +28,16 @@ const Billings = () => {
   const [shopCount, setShopCount] = useState(0);
   const [mandateLoading, setMandateLoading] = useState(false);
   const [renewalLoading, setRenewalLoading] = useState(false);
+  const [pageNumber, setPageNumber] = useState(0);
+const itemsPerPage = 3;
+
+  const subscriptionStatus = !userSubscription
+    ? 'Free tier'
+    : userSubscription?.status === 'trialing'
+      ? 'Free trial'
+      : userSubscription?.status === 'active' && currentPlan?.daysLeft > 0
+        ? 'Active subscription'
+        : 'Expired subscription / inactive';
 
   const navigate = useNavigate();
 
@@ -87,6 +98,12 @@ const Billings = () => {
 
         // 2. Fetch user's active subscription and payment history
         const userSubSnap = await getDoc(doc(db, 'userSubscriptions', currentUser.id));
+        const paymentsQuery = query(
+          collection(db, 'subscriptionPaymentRecord'),
+          where('userId', '==', currentUser.id),
+          orderBy('createdAt', 'desc')
+        );
+        const paymentsSnap = await getDocs(paymentsQuery);
 
         // 3. Process subscription data
         if (userSubSnap.exists()) {
@@ -106,23 +123,21 @@ const Billings = () => {
             // Align the selected plan UI with the active subscription
             setSelectedPlan(plan);
           }
-          // 4. Process payment history from Firestore snapshot
-          if (Array.isArray(userData.paymentHistory)) {
-            const formattedHistory = userData.paymentHistory.map(payment => ({
-              id: payment.id || crypto.randomUUID(),
-              date: formatDate(payment.createdAt),
-              amount: `₹${(payment.amount || 0) / 100}`,
-              status: payment.status || 'unknown',
-              method: payment.method || 'razorpay',
-              details: payment.details || "Subscription Payment",
-              invoiceUrl: payment.invoiceUrl
-            }));
 
-            console.log('Formatted payment history (from userData):', formattedHistory);
-            setPaymentHistory(formattedHistory);
-          } else {
-            setPaymentHistory([]); // Fallback
-          }
+          // 4. Process payment history from subscriptionPaymentRecord collection
+          const paymentDocs = paymentsSnap.docs;
+          const formattedHistory = paymentDocs.map(doc => ({
+            id: doc.id,
+            date: formatDate(doc.data().createdAt),
+            amount: `₹${(doc.data().amount || 0) / 100}`,
+            status: doc.data().status || 'unknown',
+            method: doc.data().method || 'razorpay',
+            details: doc.data().details || "Subscription Payment",
+            invoiceUrl: doc.data().invoiceUrl
+          }));
+
+          console.log('Formatted payment history (from collection):', formattedHistory);
+          setPaymentHistory(formattedHistory);
         } else {
           // If no active subscription, default to the first plan
           setSelectedPlan(plansData[0] || null);
@@ -160,7 +175,8 @@ const Billings = () => {
       (snapshot) => {
         console.log('Real-time payment update:', snapshot.docChanges());
 
-        const allPayments = snapshot.docs.map(doc => {
+        // Process new payments from snapshot
+        const newPayments = snapshot.docs.map(doc => {
           const payment = doc.data();
           return {
             id: doc.id,
@@ -173,7 +189,12 @@ const Billings = () => {
           };
         });
 
-        setPaymentHistory(allPayments);
+        // Update state with new payments, ensuring no duplicates
+        setPaymentHistory(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const filteredNew = newPayments.filter(p => !existingIds.has(p.id));
+          return [...filteredNew, ...prev];
+        });
       },
       (error) => {
         console.error("Error in payment history listener:", error);
@@ -188,18 +209,6 @@ const Billings = () => {
       setMandateLoading(true);
       const shopCount = currentUser?.id ? await getUserShopCount(currentUser.id) : 0;
 
-      // 1. Ensure Razorpay customer exists
-      // let razorpayCustomerId = currentUser?.razorpayCustomerId;
-      // if (!razorpayCustomerId && currentUser?.id) {
-      //   const customerRes = await axios.post('http://localhost:5000/api/payments/create-razorpay-customer', {
-      //     userId: currentUser.id,
-      //     name: currentUser.name,
-      //     email: currentUser.email,
-      //     phone: currentUser.phone
-      //   });
-      //   razorpayCustomerId = customerRes.data.customerId;
-      // }
-
       // 1. Create Razorpay order (one-time payment)
       const res = await axios.post('http://localhost:5000/api/payments/create-subscription', {
         planId: selectedPlan.id,
@@ -210,14 +219,14 @@ const Billings = () => {
         billingCycle: selectedPlan.billingCycle
       });
       console.log('LLL', res.data)
-      if (res.data.success) {
+      if (res.data.success && res.data.orderId) {
         console.log('amount', res.data.totalAmount);
         const options = {
           key: res.data.razorpayKey,
           amount: res.data.totalAmount,
           currency: 'INR',
           name: 'Stackorq',
-          image: '/favicon-32x32.png',
+          image: '/favicon.svg',
           description: `${res.data.planName} Subscription for ${shopCount} shop(s)`,
           order_id: res.data.orderId,
           prefill: {
@@ -230,7 +239,7 @@ const Billings = () => {
             try {
               toast({ title: 'Payment successful!', description: 'Subscription Activated!' });
 
-              const periodDays = selectedPlan.billingPeriod === 'yearly' ? 365 : 30;
+              const periodDays = selectedPlan?.billingCycle === 'yearly' ? 365 : 30;
 
               // Create payment record
               const paymentRecord = {
@@ -244,299 +253,290 @@ const Billings = () => {
                 razorpayPaymentId: response.razorpay_payment_id,
                 createdAt: Timestamp.now()
               };
-
-              // Create subscription record
-              const newSub = {
-                userId: currentUser.id,
-                planId: selectedPlan.id,
-                shopNumbers: shopCount,
-                status: 'active',
-                currentPeriodStart: Timestamp.now(),
-                currentPeriodEnd: Timestamp.fromDate(calculatePeriodEnd(periodDays)),
-                daysLeft: calculateDaysLeft(calculatePeriodEnd(periodDays)),
+              
+              // Save payment record to Firestore
+              await setDoc(doc(db, 'subscriptionPaymentRecord', paymentRecord.id), paymentRecord);
+              
+              // Update user subscription data
+              const userSubRef = doc(db, 'userSubscriptions', currentUser.id);
+              const userSubSnap = await getDoc(userSubRef);
+              
+              // Use Razorpay response for subscription ID
+              const subscriptionId = response.razorpay_subscription_id || '';
+              
+              // Calculate period end safely using direct date calculation
+              const calculateSafePeriodEnd = (billingCycle: string) => {
+                const days = billingCycle === 'yearly' ? 365 : 30;
+                const endDate = new Date();
+                endDate.setDate(endDate.getDate() + days);
+                return Timestamp.fromDate(endDate);
               };
-
-              // Save to DB
-              const batch = writeBatch(db);
-              batch.set(doc(db, 'userSubscriptions', currentUser.id), newSub);
-              batch.set(doc(db, 'subscriptionPaymentRecord', response.razorpay_payment_id), paymentRecord);
-              await batch.commit();
-
-              toast({
-                title: 'Success! Your subscription is active',
-                description: `You have ${selectedPlan.billingPeriod} access to your plan`
+              
+              const periodEnd = calculateSafePeriodEnd(selectedPlan?.billingCycle || 'monthly');
+              
+              if (userSubSnap.exists()) {
+                // Update existing subscription
+                await updateDoc(userSubRef, {
+                  razorpaySubscriptionId: subscriptionId,
+                  planId: selectedPlan.id,
+                  currentPeriodStart: Timestamp.now(),
+                  currentPeriodEnd: periodEnd,
+                  status: 'active'
+                });
+              } else {
+                // Create new subscription document
+                await setDoc(userSubRef, {
+                  userId: currentUser.id,
+                  razorpaySubscriptionId: subscriptionId,
+                  planId: selectedPlan.id,
+                  currentPeriodStart: Timestamp.now(),
+                  currentPeriodEnd: periodEnd,
+                  status: 'active',
+                  paymentHistory: [paymentRecord]
+                });
+              }
+              
+              // Update local state using the same periodEnd value as Firestore update
+              setUserSubscription({
+                razorpaySubscriptionId: subscriptionId,
+                planId: selectedPlan.id,
+                currentPeriodStart: Timestamp.now(),
+                currentPeriodEnd: periodEnd,
+                status: 'active'
               });
-
-              window.location.reload();
-
+              
+              setCurrentPlan({
+                ...selectedPlan,
+                expires: formatDate(periodEnd),
+                daysLeft: calculateDaysLeft(periodEnd)
+              });
+              
+              // Add new payment to payment history with unique ID
+              setPaymentHistory(prev => {
+                const newPayment = {
+                  id: `${response.razorpay_payment_id}_${Date.now()}`,
+                  date: formatDate(new Date()),
+                  amount: `₹${res.data.totalAmount / 100}`,
+                  status: 'paid',
+                  method: 'razorpay',
+                  details: "Subscription Payment"
+                };
+                // Avoid duplicates by checking if payment already exists
+                const exists = prev.some(p => p.id === newPayment.id);
+                if (exists) {
+                  return prev;
+                }
+                return [newPayment, ...prev];
+              });
+              
             } catch (error) {
-              console.error('Database update failed:', error);
+              console.error('Error handling payment success:', error);
               toast({
-                variant: 'destructive',
-                title: 'Database Error',
-                description: 'Payment succeeded but record saving failed'
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to process payment"
               });
-            } finally {
-              setMandateLoading(false);
-            }
-          },
-          modal: {
-            ondismiss: () => {
-              setMandateLoading(false);
-              toast({ title: 'Cancelled', description: 'Payment window closed' });
             }
           }
         };
-
-        const rzp = new (window as any).Razorpay(options);
+        
+        // @ts-ignore - Razorpay type definition might be missing
+        const rzp = new window.Razorpay(options);
         rzp.open();
       }
     } catch (error) {
-      console.error('Payment setup error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Setup Failed',
-        description: error.response?.data?.error || 'Payment initialization failed'
-      });
-      setMandateLoading(false);
-    }
-  };
-
-  const handleRenew = async () => {
-    try {
-      setRenewalLoading(true);
-      const res = await axios.post('http://localhost:5000/api/payments/renew-subscription', {
-        subscriptionId,
-      });
-
-      if (res.data.success) {
+        console.error('Error setting up mandate:', error);
         toast({
-          title: "Renewal initiated",
-          description: "You'll be notified when payment completes"
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to setup payment mandate"
         });
-      }
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.response?.data?.error || "Renewal failed"
-      });
     } finally {
-      setRenewalLoading(false);
-    }
-  };
+        setMandateLoading(false);
+      }
+    };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (mandateLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-white mx-auto mb-4" />
-          <p className="text-white">Processing payment...</p>
-        </div>
-      </div>
-    );
-  }
+  // Pagination logic
+  const indexOfLastItem = (pageNumber + 1) * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = paymentHistory.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wallet className="text-food-orange" /> Owner Subscription
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center flex-col md:flex-row gap-4">
-              <div>
-                <div className="text-lg font-semibold">
-                  Current Plan: <span className="text-food-orange">{currentPlan?.name || 'No active plan'}</span>
+      <div className="container mx-auto py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Billing & Subscriptions</h1>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Plan Selection Card */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Subscription Plans</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {plans.map((plan: SubscriptionPlan) => (
+                    <Card 
+                      key={plan.id} 
+                      className={`cursor-pointer transition-all ${selectedPlan?.id === plan.id ? 'border-primary ring-2 ring-primary' : ''}`}
+                      onClick={() => setSelectedPlan(plan)}
+                    >
+                      <CardHeader>
+                        <CardTitle className="flex justify-between items-center">
+                          {plan.name}
+                          {selectedPlan?.id === plan.id && (
+                            <Badge variant="secondary">Selected</Badge>
+                          )}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-bold mb-2">₹{(plan.priceInPaise / 100).toFixed(2)}<span className="text-sm font-normal text-gray-500">/{plan.billingCycle}</span></p>
+                        <ul className="space-y-1">
+                          {plan.features.map((feature, index) => (
+                            <li key={index} className="flex items-center">
+                              <span className="mr-2">✓</span> {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                {currentPlan && (
-                  <>
-                    <div className="text-sm">
-                      Expires: {currentPlan.expires}{" "}
-                      <Badge className="ml-1" variant="outline">
-                        {currentPlan.daysLeft} days left
-                      </Badge>
-                    </div>
-                    <div className="text-sm mt-1">Subscription ID: <span className='px-1.5 py-0.5 rounded bg-slate-200 font-semibold'>{subscriptionId}</span></div>
-                  </>
-                )}
-                {!currentPlan && (
-                  <div className="text-sm text-muted-foreground">No active subscription found</div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <Badge className={`text-lg mx-auto shadow ${currentPlan ? 'bg-green-300 text-gray-700 hover:bg-green-300' : 'bg-gray-300 text-gray-700'}`}>
-                  {currentPlan ? 'Active' : 'Inactive'}
-                </Badge>
-                {userSubscription && (
-                  <Button
-                    className="text-base bg-food-orange text-white hover:bg-food-orange/90 flex items-center justify-center"
-                    onClick={handleRenew}
-                    disabled={renewalLoading || loading}
+                
+                <div className="mt-6 flex gap-4">
+                  <Button 
+                    onClick={handleSetupMandate} 
+                    disabled={!selectedPlan || mandateLoading}
+                    className="bg-primary hover:bg-primary/90"
                   >
-                    {renewalLoading ? (
+                    {mandateLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Renewing...
+                        Setting up...
                       </>
                     ) : (
-                      'Renew'
+                      <>
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Setup Subscription
+                      </>
                     )}
                   </Button>
-                )}
-                <Button
-                  className="text-base bg-gray-700 text-white hover:bg-gray-800 flex items-center justify-center"
-                  onClick={handleSetupMandate}
-                  disabled={mandateLoading || loading || !selectedPlan}
-                >
-                  {mandateLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    userSubscription ? 'Change Plan' : 'Start New Mandate'
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="text-food-orange" /> Plans & Services
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-wrap justify-center gap-4">
-                {plans?.map(plan => (
-                  <div
-                    key={plan?.id || plan?.name}
-                    onClick={() => setSelectedPlan(plan)}
-                    className={`rounded shadow p-4 bg-white border cursor-pointer transition-all
-                      ${plan?.recommended ? "border-food-orange ring-2 ring-food-orange" : ""}
-                      ${selectedPlan?.id === plan?.id ? "border-food-orange ring-2 ring-food-orange" : ""}
-                      ${currentPlan?.name === plan?.name ? "bg-gray-100" : ""}
-                    `}
-                  >
-                    <div className="text-xl font-bold">{plan?.name}</div>
-                    <div className="text-food-orange font-bold">{plan?.price}</div>
-                    {shopCount > 0 && plan?.priceInPaise && (
-                      <div className="text-sm text-muted-foreground mt-1">
-                        Total for {shopCount} shop{shopCount > 1 ? "s" : ""}: ₹{(plan.priceInPaise * shopCount) / 100}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Current Subscription Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Subscription</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {currentPlan ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Plan Type:</span>
+                      <span>{currentPlan.billingCycle}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Status:</span>
+                      <Badge>{subscriptionStatus}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Start Date:</span>
+                      <span>{formatDate(userSubscription.currentPeriodStart)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">End Date:</span>
+                      <span>{currentPlan.expires}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Days Left:</span>
+                      <span>{currentPlan.daysLeft}</span>
+                    </div>
+                    {currentPlan.daysLeft > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">Next Payment Date:</span>
+                        <span>{currentPlan.expires}</span>
                       </div>
                     )}
-                    <ul className="mt-3 text-sm text-muted-foreground list-disc pl-5">
-                      {plan?.features?.map((f, idx) => <li key={idx}>{f}</li>)}
-                    </ul>
-                    {plan?.recommended && <Badge className="mt-2">Recommended</Badge>}
-                    {currentPlan?.name === plan?.name && (
-                      <Badge className="mt-2 ml-2 bg-blue-100 text-blue-800">Current</Badge>
-                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Shops:</span>
+                      <span>{shopCount}</span>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Selected Plan Summary */}
-        {selectedPlan && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="text-food-orange" /> Selected Plan Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <strong>Plan:</strong> {selectedPlan.name}
-                </div>
-                <div>
-                  <strong>Price per Shop:</strong> {selectedPlan.price}
-                </div>
-                <div>
-                  <strong>Number of Shops:</strong> {shopCount}
-                </div>
-                <div>
-                  <strong>Total Amount:</strong>{' '}
-                  {selectedPlan.priceInPaise
-                    ? `₹${(selectedPlan.priceInPaise * shopCount) / 100}`
-                    : selectedPlan.price}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                ) : (
+                  <p className="text-gray-500">No active subscription</p>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Payment History */}
+            <Card className="lg:col-span-3">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Payment History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {paymentHistory.length > 0 ? (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Details</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {currentItems.map((payment) => (
+                          <TableRow key={payment.id}>
+                            <TableCell>{payment.date}</TableCell>
+                            <TableCell>{payment.amount}</TableCell>
+                            <TableCell>
+                              <Badge variant={payment.status === 'paid' ? 'default' : 'secondary'}>
+                                {payment.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{payment.method}</TableCell>
+                            <TableCell>{payment.details}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <ReactPaginate
+                      previousLabel="Previous"
+                      nextLabel="Next"
+                      breakLabel="..."
+                      pageCount={Math.ceil(paymentHistory.length / itemsPerPage)}
+                      marginPagesDisplayed={2}
+                      pageRangeDisplayed={5}
+                      onPageChange={(selectedItem) => setPageNumber(selectedItem.selected)}
+                      containerClassName="flex justify-center mt-4 space-x-2"
+                      pageClassName="px-3 py-1 border rounded"
+                      activeClassName="bg-primary text-white"
+                      previousClassName="px-3 py-1 border rounded"
+                      nextClassName="px-3 py-1 border rounded"
+                    />
+                  </>
+                ) : (
+                  <p className="text-gray-500">No payment history available</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="text-food-orange" /> Subscription Payment History
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {paymentHistory.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Details</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paymentHistory.map((row, i) => (
-                    <TableRow key={row.id || i}>
-                      <TableCell>{row.date}</TableCell>
-                      <TableCell>{row.amount}</TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            row.status === 'paid'
-                              ? "bg-green-100 text-green-800"
-                              : row.status === 'failed'
-                                ? "bg-red-100 text-red-800"
-                                : "bg-yellow-100 text-yellow-800"
-                          }
-                        >
-                          {row.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="capitalize">{row.method}</TableCell>
-                      <TableCell>{row.details}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <History className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p>No payment history found</p>
-                <p className="text-sm">Payments will appear here after your first transaction</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </main>
+      </div>
     </div>
   );
 };

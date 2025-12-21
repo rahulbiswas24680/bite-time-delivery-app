@@ -4,6 +4,7 @@ import { MenuItem } from '../../utils/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCategoryNameById } from '@/backend/menu';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MenuCardProps {
   item: MenuItem;
@@ -40,7 +41,9 @@ const MenuCard: React.FC<MenuCardProps> = ({ item, onAddToOrder }) => {
       </div>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-bold">{item.name}</CardTitle>
-        <CardDescription className="text-food-darkGray text-sm">{categoryName || "Loading..."}</CardDescription>
+        <CardDescription className="text-food-darkGray text-sm">
+          {categoryName ? categoryName : <Skeleton className="h-4 w-24" />}
+        </CardDescription>
       </CardHeader>      
       <CardContent>
         <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>

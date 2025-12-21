@@ -19,4 +19,13 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    manifest: true,
+  },
+  server: {
+    headers: {
+      'Service-Worker-Allowed': '/',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  },
 }));

@@ -27,7 +27,7 @@ type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready';
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 const Dashboard: React.FC = () => {
-  const { currentUser, currentShopId, currentShopSlug } = useAuth();
+  const { currentUser, currentShopId, currentShopSlug, loading: authLoading } = useAuth();
 
   const [loading, setLoading] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus>('pending');
@@ -49,6 +49,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
   React.useEffect(() => {
+    if (authLoading) return; // Wait for auth loading to finish
     if (!currentUser && !currentShopId) {
       navigate('/login');
     } else if (currentUser && currentUser.role !== 'owner') {
@@ -56,7 +57,7 @@ const Dashboard: React.FC = () => {
     } else if (!currentShopId) {
       navigate('/not-found');
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, authLoading, navigate]);
 
   const loadOrders = async () => {
     if (!currentShopId) return;

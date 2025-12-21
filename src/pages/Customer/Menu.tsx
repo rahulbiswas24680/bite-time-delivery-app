@@ -1,7 +1,6 @@
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,8 +9,7 @@ import MenuCard from '../../components/Menu/MenuCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMenuCategories, getAllMenuItems } from '../../data/menuItems';
 import { MenuItem } from '../../utils/types';
-import { AlertCircleIcon } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { AlertCircleIcon, Loader2Icon } from 'lucide-react';
 
 interface CartItem {
   menuItem: MenuItem;
@@ -158,47 +156,36 @@ const Menu: React.FC = () => {
     if (currentUser && currentUser.role !== 'customer') {
       navigate(`/owner/${currentShopId}/dashboard`);
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, currentShopId]);
+
 
   const FullPageSpinner = () => (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+    <div className="min-h-screen flex flex-col md:flex-row gap-8 px-4 py-8">
+      <div className="flex-1 flex flex-col items-center md:items-start">
+        <h2 className="text-2xl font-bold mb-4">No Shop Selected</h2>
+        <p className="text-gray-500 mb-6 text-center md:text-left">Please select a shop to view the menu</p>
+      </div>
     </div>
   );
-
-  const MenuSkeleton = () => (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row gap-8">
-        <div className="w-full md:w-1/4">
-          <h2 className="text-xl font-bold mb-4">Categories</h2>
-          <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-8 w-full bg-gray-200 animate-pulse p-2 rounded"></div>
-            ))}
-          </div>
-        </div>
-        <div className="w-full md:w-3/4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="border rounded-lg p-4">
-              <div className="h-40 bg-gray-200 mb-3 animate-pulse"></div>
-              <div className="h-6 w-3/4 mb-2 bg-gray-200 animate-pulse"></div>
-              <div className="h-4 w-1/2 mb-2 bg-gray-200 animate-pulse"></div>
-              <div className="h-10 w-full bg-gray-200 animate-pulse rounded"></div>
-            </div>
-          ))}
-        </div>
-      </div>
+  
+  const MenuSpinner = () => (
+    <div className="container mx-auto px-4 py-8 flex justify-center items-center h-full">
+      <Loader2Icon className="h-12 w-12 animate-spin" />
     </div>
   );
 
   const ErrorDisplay = ({ message, onRetry }: { message: string, onRetry: () => void }) => (
     <div className="text-center">
+      <div className="flex justify-center mb-4">
+        <AlertCircleIcon className="h-12 w-12 text-red-500" />
+      </div>
       <div className="text-red-500 text-xl mb-4">{message}</div>
       <button
         onClick={onRetry}
-        className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
+        className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 flex items-center space-x-2"
       >
-        Retry
+        <Loader2Icon className="h-4 w-4 animate-spin" />
+        <span>Retry</span>
       </button>
     </div>
   );
@@ -211,31 +198,27 @@ const Menu: React.FC = () => {
 
 
         {status === 'checking' && <FullPageSpinner />}
-      
+
         {status === 'loading' && (
-          <main className="flex-1">
-            <MenuSkeleton />
+          <main className="flex-1 flex items-center justify-center">
+            <MenuSpinner />
           </main>
         )}
-        
+
         {status === 'no-shop' && (
           <main className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-4">No Shop Selected</h2>
-              <Button onClick={() => navigate('/')}>Browse Shops</Button>
-            </div>
+            <MenuSpinner />
           </main>
         )}
-        
         {status === 'error' && (
           <main className="flex-1 flex items-center justify-center">
-            <ErrorDisplay 
-              message={errorMessage} 
-              onRetry={() => window.location.reload()} 
+            <ErrorDisplay
+              message={errorMessage}
+              onRetry={() => window.location.reload()}
             />
           </main>
         )}
-        
+
         {status === 'ready' && currentShopId ?
           (
             <main className="flex-1 container mx-auto px-4 py-8">
